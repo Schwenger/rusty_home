@@ -1,0 +1,15 @@
+[package]
+name = "rusty_home"
+version = "0.1.0"
+edition = "2021"
+authors = ["Maximilian Schwenger <mail@mschwenger.de>"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures = "0.3.28"
+paho-mqtt = "0.12.0"
+serde_yaml = "0.9.21"
+serde = { version = "1.0", features = ["derive"] }
+ctrlc = "3.2.5"
+maplit = "1.0.2"
