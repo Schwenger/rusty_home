@@ -17,9 +17,12 @@ use error::HomeBaseError;
 
 mod config;
 mod controller;
+mod devices;
 mod error;
 mod frame;
+mod home;
 mod mqtt;
+// mod api;
 
 #[macro_use]
 extern crate maplit;

@@ -1,9 +1,12 @@
+// use crate::api::HomeEditError;
+
 #[derive(Debug)]
 pub enum HomeBaseError {
   Io(std::io::Error),
   Serde(serde_yaml::Error),
   Paho(paho_mqtt::Error),
   CtrlC(ctrlc::Error),
+  // HomeEdit(crate:::api::HomeEditError),
 }
 
 impl From<std::io::Error> for HomeBaseError {

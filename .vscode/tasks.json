@@ -9,6 +9,32 @@
 			],
 			"group": "build",
 			"label": "rust: cargo check"
+		},
+		{
+			"type": "cargo",
+			"command": "fmt",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build",
+			"label": "rust: cargo format"
+		},
+		{
+			"type": "cargo",
+			"command": "clippy",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build",
+			"label": "rust: cargo clippy"
+		},
+		{
+			"label": "rust: full check",
+			"group": "build",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"dependsOn": ["rust: cargo check", "rust: cargo fmt", "rust: cargo clippy"]
 		}
 	]
 }
