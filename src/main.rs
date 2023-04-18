@@ -14,18 +14,17 @@
 use config::GlobalConfig;
 use controller::Controller;
 use error::HomeBaseError;
+use futures::executor::block_on;
 
+mod api;
 mod config;
 mod controller;
 mod devices;
 mod error;
 mod frame;
 mod home;
+mod logic;
 mod mqtt;
-// mod api;
-
-#[macro_use]
-extern crate maplit;
 
 type Error = HomeBaseError;
 pub type Result<T> = std::result::Result<T, Error>;
@@ -33,6 +32,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 fn main() -> Result<()> {
   let controller: Controller = GlobalConfig::read()?.try_into()?;
   controller.test_mode();
-  controller.shutdown();
+  block_on(async { controller.run().await });
   Ok(())
 }

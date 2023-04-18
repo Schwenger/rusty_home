@@ -1,38 +1,30 @@
-use std::{
-  collections::HashMap,
-  sync::Arc,
-  thread::{self, JoinHandle},
-  time::Duration,
+use std::thread::sleep;
+use std::time::Duration;
+
+use futures::{channel::mpsc::unbounded, executor::block_on, join, pin_mut, select, FutureExt};
+
+use crate::{
+  config::GlobalConfig,
+  frame,
+  logic::Executor,
+  mqtt::{self, MqttReceiver, ProtectedClient},
+  Error,
 };
 
-use futures::{executor::block_on, join};
-
-use crate::{config::GlobalConfig, frame, mqtt::Client, Error};
-
-type Handle = JoinHandle<Error>;
-
 pub struct Controller {
-  _components: HashMap<MainComponent, Handle>,
-  client: Arc<Client>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum MainComponent {
-  Client,
-  // WebApi,
-  // Responder,
-  // Commander,
-  // Refresher,
+  client: ProtectedClient,
+  mqtt_receiver: MqttReceiver,
+  executor: Executor,
 }
 
 impl Controller {
   pub fn new(config: GlobalConfig) -> Result<Self, Error> {
-    frame::startup();
-    let (client, handle) = block_on(async { Self::setup_client(&config).await })?;
-    let components = hashmap! {
-      MainComponent::Client => handle
-    };
-    Ok(Self { client, _components: components })
+    let (client, mqtt_receiver) = block_on(async { Self::setup_client(&config).await })?;
+    let (web_send, _web_recv) = unbounded(); // Create in WebApi
+    let (_q_send, q_recv) = unbounded(); // Distribute send more liberally.
+    let executor = Executor::new(q_recv, client.clone(), web_send);
+    frame::startup(client.clone());
+    Ok(Self { client, mqtt_receiver, executor })
   }
 
   pub fn test_mode(&self) {
@@ -40,26 +32,38 @@ impl Controller {
       let topic = "zigbee2mqtt/Device/Light/Living Room/Orb/set";
       let payload = "{\"state\": \"OFF\"}";
       println!("Publishing");
-      self.client.publish(topic, payload).await;
+      self.client.lock().await.publish(topic, payload).await;
       println!("Disconnecting");
-      self.client.disconnect().await;
+      self.client.lock().await.disconnect().await;
       println!("Nap Time.");
-      thread::sleep(Duration::from_secs(20));
+      sleep(Duration::from_secs(20));
     });
   }
 
-  pub fn shutdown(&self) {
-    block_on(async { self.client.disconnect().await });
-    frame::shutdown();
+  async fn setup_client(config: &GlobalConfig) -> Result<(ProtectedClient, MqttReceiver), Error> {
+    let (client, receiver) =
+      mqtt::setup_client(&config.mosquitto.ip, config.mosquitto.port).await?;
+    let empty = vec![];
+    {
+      let client = client.lock().await;
+      let sub = client.subscribe_to_all(&empty);
+      let que = client.query_states(&empty);
+      join!(sub, que);
+    }
+    Ok((client, receiver))
   }
 
-  async fn setup_client(config: &GlobalConfig) -> Result<(Arc<Client>, Handle), Error> {
-    let client = Client::new(&config.mosquitto.ip, config.mosquitto.port).await?;
-    let empty = vec![];
-    let sub = client.subscribe_to_all(&empty);
-    let que = client.query_states(&empty);
-    join!(sub, que);
-    let (client, handle) = client.run().await?;
-    Ok((client, handle))
+  pub async fn run(self) -> ! {
+    let Controller { client: _client, mqtt_receiver, executor } = self;
+    let mqtt_recv = mqtt_receiver.run().fuse();
+    let requ_exec = executor.run().fuse();
+
+    pin_mut!(mqtt_recv, requ_exec);
+
+    select! {
+      err = mqtt_recv => eprintln!("{:?}", err.unwrap_err()),
+      err = requ_exec => eprintln!("{:?}", err.unwrap_err()),
+    }; // Todo: Handle if one of them returned.  Re-use all but the crashed one.
+    unreachable!()
   }
 }
