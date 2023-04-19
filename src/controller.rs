@@ -2,6 +2,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use futures::{channel::mpsc::unbounded, executor::block_on, join, pin_mut, select, FutureExt};
+use crate::api::{Topic, DeviceKind, TopicMode};
 use crate::home::Home;
 
 use crate::{
@@ -33,10 +34,10 @@ impl Controller {
 
   pub fn test_mode(&self) {
     block_on(async {
-      let topic = "zigbee2mqtt/Device/Light/Living Room/Orb/set";
+      let topic = Topic::Device { name: "Orb".to_string(), room: "Living Room".to_string(), groups: vec![], kind: DeviceKind::Light };
       let payload = "{\"state\": \"OFF\"}";
       println!("Publishing");
-      self.client.lock().await.publish(topic, payload).await;
+      self.client.lock().await.publish(&topic.string(TopicMode::Set), payload).await;
       println!("Disconnecting");
       self.client.lock().await.disconnect().await;
       println!("Nap Time.");
