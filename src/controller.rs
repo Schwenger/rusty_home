@@ -2,6 +2,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use futures::{channel::mpsc::unbounded, executor::block_on, join, pin_mut, select, FutureExt};
+use crate::home::Home;
 
 use crate::{
   config::GlobalConfig,
@@ -19,10 +20,13 @@ pub struct Controller {
 
 impl Controller {
   pub fn new(config: GlobalConfig) -> Result<Self, Error> {
-    let (client, mqtt_receiver) = block_on(async { Self::setup_client(&config).await })?;
+    let (client, mqtt_receiver) = block_on(async {
+       Self::setup_client(&config).await
+    })?;
+    let home = Home::from(&config);
     let (web_send, _web_recv) = unbounded(); // Create in WebApi
     let (_q_send, q_recv) = unbounded(); // Distribute send more liberally.
-    let executor = Executor::new(q_recv, client.clone(), web_send);
+    let executor = Executor::new(q_recv, client.clone(), web_send, home);
     frame::startup(client.clone());
     Ok(Self { client, mqtt_receiver, executor })
   }

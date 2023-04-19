@@ -5,9 +5,9 @@ use futures::{
 };
 
 use crate::{
-  api::{Command, JsonPayload, Query, Request},
+  api::{Command, JsonPayload, Query, Request, Queryable},
   mqtt::ProtectedClient,
-  Result,
+  Result, home::Home,
 };
 
 pub struct Executor {
@@ -21,22 +21,24 @@ impl Executor {
     requests: UnboundedReceiver<Request>,
     client: ProtectedClient,
     response: UnboundedSender<JsonPayload>,
+    home: Home,
   ) -> Self {
     Executor {
       requests,
-      soldier: Soldier::new(client.clone()),
-      scholar: Scholar::new(client, response),
+      soldier: Soldier::new(client),
+      scholar: Scholar::new( response, home),
     }
   }
 
   pub async fn run(self) -> Result<Never> {
     let Executor { requests, soldier, scholar } = self;
     requests
-      .for_each(|req| async {
+      .fold(scholar, |mut scholar, req| async {
         match req {
           Request::Command(cmd) => soldier.exec(cmd).await,
           Request::Query(query) => scholar.respond(query).await,
         }
+        scholar
       })
       .await;
     unreachable!()
@@ -58,16 +60,19 @@ impl Soldier {
 }
 
 struct Scholar {
-  _client: ProtectedClient,
-  _response: UnboundedSender<JsonPayload>,
+  home: Home,
+  response: UnboundedSender<JsonPayload>,
 }
 
 impl Scholar {
-  fn new(client: ProtectedClient, response: UnboundedSender<JsonPayload>) -> Self {
-    Scholar { _client: client, _response: response }
+  fn new(response: UnboundedSender<JsonPayload>, home: Home) -> Self {
+    Scholar { home, response }
   }
 
-  async fn respond(&self, _to: Query) {
-    todo!()
+  async fn respond(&mut self, to: Query) {
+    let res = match to {
+      Query::Architecture => self.home.query_architecture(),
+    };
+    self.response.start_send(res).expect("Failed to send response.");
   }
 }
