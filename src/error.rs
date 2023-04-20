@@ -6,6 +6,8 @@ pub enum HomeBaseError {
   Serde(serde_yaml::Error),
   Paho(paho_mqtt::Error),
   CtrlC(ctrlc::Error),
+  ImpossibleStrConversion,
+  InvalidTopic,
   // HomeEdit(crate:::api::HomeEditError),
 }
 

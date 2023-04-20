@@ -5,7 +5,7 @@ pub enum Request {
 }
 
 pub enum Query {
-  Architecture
+  Architecture,
 }
 
 pub enum Command {}

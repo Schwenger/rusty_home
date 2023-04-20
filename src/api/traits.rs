@@ -1,4 +1,5 @@
 use crate::api::Topic;
+use crate::Result;
 
 pub trait Queryable {
   type Output;
@@ -7,3 +8,18 @@ pub trait Queryable {
 }
 
 pub trait Editable {}
+
+pub trait JsonConvertible: Sized {
+  fn to_json(&self) -> String;
+  fn from_str(s: &str) -> Result<Self>;
+}
+
+pub trait YamlConvertible: Sized {
+  fn to_yaml(&self) -> String;
+  fn from_str(s: &str) -> Result<Self>;
+}
+
+pub trait TopicConvertible: Sized {
+  fn to_topic(&self) -> String;
+  fn from_str(s: &str) -> Result<Self>;
+}

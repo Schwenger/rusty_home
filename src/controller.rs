@@ -1,9 +1,9 @@
 use std::thread::sleep;
 use std::time::Duration;
 
-use futures::{channel::mpsc::unbounded, executor::block_on, join, pin_mut, select, FutureExt};
-use crate::api::{Topic, DeviceKind, TopicMode};
+use crate::api::{DeviceKind, Topic, TopicMode};
 use crate::home::Home;
+use futures::{channel::mpsc::unbounded, executor::block_on, join, pin_mut, select, FutureExt};
 
 use crate::{
   config::GlobalConfig,
@@ -21,9 +21,7 @@ pub struct Controller {
 
 impl Controller {
   pub fn new(config: GlobalConfig) -> Result<Self, Error> {
-    let (client, mqtt_receiver) = block_on(async {
-       Self::setup_client(&config).await
-    })?;
+    let (client, mqtt_receiver) = block_on(async { Self::setup_client(&config).await })?;
     let home = Home::from(&config);
     let (web_send, _web_recv) = unbounded(); // Create in WebApi
     let (_q_send, q_recv) = unbounded(); // Distribute send more liberally.
@@ -34,10 +32,15 @@ impl Controller {
 
   pub fn test_mode(&self) {
     block_on(async {
-      let topic = Topic::Device { name: "Orb".to_string(), room: "Living Room".to_string(), groups: vec![], kind: DeviceKind::Light };
+      let topic = Topic::Device {
+        name: "Orb".to_string(),
+        room: "Living Room".to_string(),
+        groups: vec![],
+        device: DeviceKind::Light,
+      };
       let payload = "{\"state\": \"OFF\"}";
       println!("Publishing");
-      self.client.lock().await.publish(&topic.string(TopicMode::Set), payload).await;
+      self.client.lock().await.publish(&topic.to_str(TopicMode::Set), payload).await;
       println!("Disconnecting");
       self.client.lock().await.disconnect().await;
       println!("Nap Time.");

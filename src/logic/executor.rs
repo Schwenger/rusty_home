@@ -5,9 +5,10 @@ use futures::{
 };
 
 use crate::{
-  api::{Command, JsonPayload, Query, Request, Queryable},
+  api::{Command, JsonPayload, Query, Queryable, Request},
+  home::Home,
   mqtt::ProtectedClient,
-  Result, home::Home,
+  Result,
 };
 
 pub struct Executor {
@@ -23,11 +24,7 @@ impl Executor {
     response: UnboundedSender<JsonPayload>,
     home: Home,
   ) -> Self {
-    Executor {
-      requests,
-      soldier: Soldier::new(client),
-      scholar: Scholar::new( response, home),
-    }
+    Executor { requests, soldier: Soldier::new(client), scholar: Scholar::new(response, home) }
   }
 
   pub async fn run(self) -> Result<Never> {

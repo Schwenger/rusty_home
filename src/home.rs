@@ -1,6 +1,9 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{api::{JsonPayload, Queryable}, config::GlobalConfig};
+use crate::{
+  api::{JsonPayload, Queryable},
+  config::GlobalConfig,
+};
 
 use room::Room;
 
@@ -13,23 +16,23 @@ pub struct Home {
 }
 
 impl From<&GlobalConfig> for Home {
-    fn from(cfg: &GlobalConfig) -> Self {
-        let path = &cfg.home.dir;
-        let content = std::fs::read_to_string(path).expect("Cannot open file.");
-        let home: Home = serde_yaml::from_str(&content).expect("Cannot read home.");
-        println!("{:?}", home);
-        home
-    }
+  fn from(cfg: &GlobalConfig) -> Self {
+    let path = &cfg.home.dir;
+    let content = std::fs::read_to_string(path).expect("Cannot open file.");
+    let home: Home = serde_yaml::from_str(&content).expect("Cannot read home.");
+    println!("{:?}", home);
+    home
+  }
 }
 
 impl Queryable for Home {
-    type Output = JsonPayload;
+  type Output = JsonPayload;
 
-    fn query_architecture(&self) -> Self::Output {
-      JsonPayload::from(self)
-    }
+  fn query_architecture(&self) -> Self::Output {
+    JsonPayload::from(self)
+  }
 
-    fn query_device(&self, _topic: crate::api::Topic) -> Self::Output {
-        todo!()
-    }
+  fn query_device(&self, _topic: crate::api::Topic) -> Self::Output {
+    todo!()
+  }
 }
