@@ -11,12 +11,14 @@
     rustdoc::broken_intra_doc_links,
 )]
 
+use common::Scalar;
 use config::GlobalConfig;
 use controller::Controller;
 use error::HomeBaseError;
 use futures::executor::block_on;
 
 mod api;
+mod common;
 mod config;
 mod controller;
 mod devices;

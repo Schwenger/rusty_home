@@ -8,6 +8,7 @@ pub enum HomeBaseError {
   CtrlC(ctrlc::Error),
   ImpossibleStrConversion,
   InvalidTopic,
+  UnexpectedMqttPayload,
   // HomeEdit(crate:::api::HomeEditError),
 }
 
