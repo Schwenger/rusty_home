@@ -79,6 +79,7 @@ impl TopicConvertible for TopicKind {
   }
 }
 
+#[derive(Debug, Clone)]
 pub enum Topic {
   Home,
   Bridge,

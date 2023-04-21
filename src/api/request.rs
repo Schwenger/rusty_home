@@ -1,11 +1,11 @@
 #![allow(dead_code)]
+
+use super::{query::Query, light_command::LightCommand, home_edit::HomeEdit};
+
+#[derive(Debug, Clone)]
 pub enum Request {
   Query(Query),
-  Command(Command),
+  LightCommand(LightCommand),
+  HomeEdit(HomeEdit),
 }
 
-pub enum Query {
-  Architecture,
-}
-
-pub enum Command {}

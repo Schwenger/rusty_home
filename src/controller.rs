@@ -8,11 +8,12 @@ use futures::{channel::mpsc::unbounded, executor::block_on, join, pin_mut, selec
 use crate::{
   config::GlobalConfig,
   frame,
-  logic::Executor,
+  api::Executor,
   mqtt::{self, MqttReceiver, ProtectedClient},
   Error,
 };
 
+#[derive(Debug)]
 pub struct Controller {
   client: ProtectedClient,
   mqtt_receiver: MqttReceiver,

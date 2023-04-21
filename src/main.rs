@@ -17,16 +17,15 @@ use controller::Controller;
 use error::HomeBaseError;
 use futures::executor::block_on;
 
-mod api;
-mod common;
-mod config;
-mod controller;
-mod devices;
-mod error;
-mod frame;
-mod home;
-mod logic;
-mod mqtt;
+pub mod api;
+pub mod common;
+pub mod config;
+pub mod controller;
+pub mod devices;
+pub mod error;
+pub mod frame;
+pub mod home;
+pub mod mqtt;
 
 type Error = HomeBaseError;
 pub type Result<T> = std::result::Result<T, Error>;

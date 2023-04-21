@@ -8,6 +8,7 @@ use crate::Scalar;
 
 use super::JsonConvertible;
 
+#[derive(Debug, Clone)]
 pub struct JsonPayload(String);
 
 impl JsonPayload {

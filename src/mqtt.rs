@@ -4,10 +4,13 @@ use crate::Result;
 use futures::{lock::Mutex, never::Never, stream, StreamExt};
 use paho_mqtt::{AsyncClient, AsyncReceiver, CreateOptionsBuilder, Message, QOS_1};
 
+#[derive(Clone)]
+#[allow(missing_debug_implementations)]
 pub struct MqttClient {
   client: AsyncClient,
 }
 
+#[derive(Debug, Clone)]
 pub struct MqttReceiver {
   stream: AsyncReceiver<Option<Message>>,
   client: ProtectedClient,
