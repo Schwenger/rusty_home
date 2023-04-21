@@ -6,9 +6,9 @@ use crate::home::Home;
 use futures::{channel::mpsc::unbounded, executor::block_on, join, pin_mut, select, FutureExt};
 
 use crate::{
+  api::Executor,
   config::GlobalConfig,
   frame,
-  api::Executor,
   mqtt::{self, MqttReceiver, ProtectedClient},
   Error,
 };

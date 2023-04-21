@@ -2,7 +2,7 @@ use super::ExecutorLogic;
 
 #[derive(Debug, Clone)]
 pub enum HomeEdit {
-  AddRoom { name: String }
+  AddRoom { name: String },
 }
 
 impl ExecutorLogic {

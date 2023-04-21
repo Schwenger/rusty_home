@@ -8,9 +8,9 @@ impl From<f64> for Scalar {
 }
 
 impl From<Scalar> for f64 {
-    fn from(value: Scalar) -> Self {
-        value.0
-    }
+  fn from(value: Scalar) -> Self {
+    value.0
+  }
 }
 
 impl Scalar {

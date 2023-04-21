@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use super::{query::Query, light_command::LightCommand, home_edit::HomeEdit};
+use super::{home_edit::HomeEdit, light_command::LightCommand, query::Query};
 
 #[derive(Debug, Clone)]
 pub enum Request {
@@ -8,4 +8,3 @@ pub enum Request {
   LightCommand(LightCommand),
   HomeEdit(HomeEdit),
 }
-

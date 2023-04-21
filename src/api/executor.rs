@@ -15,8 +15,6 @@ use crate::{
 pub struct Executor {
   inner: ExecutorLogic,
   requests: UnboundedReceiver<Request>,
-  // soldier: Soldier,
-  // scholar: Scholar,
 }
 
 impl Executor {
@@ -27,11 +25,11 @@ impl Executor {
     home: Home,
   ) -> Self {
     let inner = ExecutorLogic { client, home, response };
-    Executor { requests, inner }//, soldier: Soldier::new(client), scholar: Scholar::new(response, home) }
+    Executor { requests, inner }
   }
 
   pub async fn run(self) -> Result<Never> {
-    let Executor { requests, inner /*soldier, scholar*/ } = self;
+    let Executor { requests, inner } = self;
     requests
       .fold(inner, |mut inner, req| async {
         inner.process(req).await;
