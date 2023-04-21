@@ -1,7 +1,7 @@
 use std::thread::sleep;
 use std::time::Duration;
 
-use crate::api::{DeviceKind, JsonConvertible, MqttPayload, Topic, TopicMode};
+use crate::api::{DeviceKind, MqttPayload, Topic, TopicMode};
 use crate::home::Home;
 use futures::{channel::mpsc::unbounded, executor::block_on, join, pin_mut, select, FutureExt};
 
@@ -38,14 +38,14 @@ impl Controller {
         room: "Living Room".to_string(),
         groups: vec![],
         device: DeviceKind::Light,
+        mode: TopicMode::Set,
       };
       let payload = MqttPayload::new()
         .with_state_change(true)
         .with_brightness_change(0.75.into())
-        .with_transition()
-        .to_json();
+        .with_transition();
       println!("Publishing");
-      self.client.lock().await.publish(&topic.to_str(TopicMode::Set), payload.inner()).await;
+      self.client.lock().await.publish(topic, payload).await;
       println!("Disconnecting");
       self.client.lock().await.disconnect().await;
       println!("Nap Time.");

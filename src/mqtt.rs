@@ -1,6 +1,6 @@
 use std::{sync::Arc, thread, time::Duration};
 
-use crate::Result;
+use crate::{Result, api::{Topic, TopicMode, MqttPayload, JsonConvertible}};
 use futures::{lock::Mutex, never::Never, stream, StreamExt};
 use paho_mqtt::{AsyncClient, AsyncReceiver, CreateOptionsBuilder, Message, QOS_1};
 
@@ -47,9 +47,10 @@ impl MqttReceiver {
 }
 
 impl MqttClient {
-  pub async fn publish(&self, topic: &str, payload: &str) {
-    assert!(topic.ends_with("set") || topic.ends_with("get"));
-    let msg = Message::new(topic, payload, QOS_1);
+  pub async fn publish(&self, topic: Topic, payload: MqttPayload) {
+    assert_ne!(topic.mode(), TopicMode::Blank);
+    let payload = payload.to_json().to_str();
+    let msg = Message::new(topic.to_str(), payload, QOS_1);
     if self.client.publish(msg).await.is_err() {
       eprintln!("Failed to publish message.")
     }

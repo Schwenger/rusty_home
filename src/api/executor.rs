@@ -5,7 +5,7 @@ use futures::{
 };
 
 use crate::{
-  api::{JsonPayload, Query, Queryable, Request},
+  api::{JsonPayload, Request},
   home::Home,
   mqtt::ProtectedClient,
   Result,
@@ -48,33 +48,11 @@ pub struct ExecutorLogic {
 }
 
 impl ExecutorLogic {
-  fn new(client: ProtectedClient, response: UnboundedSender<JsonPayload>, home: Home) -> Self {
-    ExecutorLogic { client, response, home }
-  }
-
   async fn process(&mut self, req: Request) {
     match req {
       Request::Query(query) => self.respond(query).await,
       Request::LightCommand(lc) => self.execute_light(lc).await,
       Request::HomeEdit(he) => self.edit_home(he).await,
     }
-  }
-}
-
-struct Scholar {
-  home: Home,
-  response: UnboundedSender<JsonPayload>,
-}
-
-impl Scholar {
-  fn new(response: UnboundedSender<JsonPayload>, home: Home) -> Self {
-    Scholar { home, response }
-  }
-
-  async fn respond(&mut self, to: Query) {
-    let res = match to {
-      Query::Architecture => self.home.query_architecture(),
-    };
-    self.response.start_send(res).expect("Failed to send response.");
   }
 }

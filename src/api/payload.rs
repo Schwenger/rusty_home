@@ -18,6 +18,9 @@ impl JsonPayload {
   pub fn inner(&self) -> &str {
     &self.0
   }
+  pub fn to_str(&self) -> String {
+    String::from(self.inner())
+  }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -68,9 +71,15 @@ impl MqttPayload {
   }
 }
 
+impl Default for MqttPayload {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl JsonConvertible for MqttPayload {
-  fn to_json(&self) -> JsonPayload {
-    JsonPayload::from(self)
+  fn to_json(self) -> JsonPayload {
+    JsonPayload::from(&self)
   }
 
   fn from_str(string: &str) -> Result<Self> {

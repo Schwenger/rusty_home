@@ -4,7 +4,13 @@ use crate::devices::{Light, Sensor};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Room {
-  pub name: String,
-  pub lights: Vec<Light>,
-  pub sensors: Vec<Sensor>,
+  name: String,
+  lights: Vec<Light>,
+  sensors: Vec<Sensor>,
+}
+
+impl Room {
+  pub fn new(name: String) -> Self {
+    Room { name, lights: vec![], sensors: vec![] }
+  }
 }

@@ -9,10 +9,12 @@ pub trait Queryable {
   fn query_device(&self, topic: Topic) -> Self::Output;
 }
 
-pub trait Editable {}
+pub trait Editable {
+  fn add_room(&mut self, name: String);
+}
 
 pub trait JsonConvertible: Sized {
-  fn to_json(&self) -> JsonPayload;
+  fn to_json(self) -> JsonPayload;
   fn from_str(string: &str) -> Result<Self>;
 }
 

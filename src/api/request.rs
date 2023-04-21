@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use super::{home_edit::HomeEdit, light_command::LightCommand, query::Query};
 
 #[derive(Debug, Clone)]

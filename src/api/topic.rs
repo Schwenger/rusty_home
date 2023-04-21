@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use crate::{api::TopicConvertible, Error, Result};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -81,62 +80,72 @@ impl TopicConvertible for TopicKind {
 
 #[derive(Debug, Clone)]
 pub enum Topic {
-  Home,
+  Home { mode: TopicMode },
   Bridge,
-  Room { name: String },
-  Group { room: String, groups: Vec<String>, name: String },
-  Device { device: DeviceKind, room: String, groups: Vec<String>, name: String },
+  Room { name: String, mode: TopicMode },
+  Group { room: String, groups: Vec<String>, name: String, mode: TopicMode },
+  Device { device: DeviceKind, room: String, groups: Vec<String>, name: String, mode: TopicMode },
 }
 
 impl Topic {
   const SEPARATOR: &str = "/";
   const BASE: &str = "zigbee2mqtt";
 
-  fn kind(&self) -> TopicKind {
+  pub fn kind(&self) -> TopicKind {
     match self {
-      Topic::Home => TopicKind::Home,
-      Topic::Bridge => TopicKind::Bridge,
-      Topic::Room { .. } => TopicKind::Room,
-      Topic::Group { .. } => TopicKind::Group,
-      Topic::Device { .. } => TopicKind::Device,
+      Topic::Home { .. }    => TopicKind::Home,
+      Topic::Bridge         => TopicKind::Bridge,
+      Topic::Room { .. }    => TopicKind::Room,
+      Topic::Group { .. }   => TopicKind::Group,
+      Topic::Device { .. }  => TopicKind::Device,
     }
   }
 
-  fn components(&self, mode: TopicMode) -> Vec<String> {
+  pub fn mode(&self) -> TopicMode {
+    match self {
+      Topic::Home { mode }        => *mode,
+      Topic::Bridge                           => TopicMode::Blank,
+      Topic::Room { mode, .. }    => *mode,
+      Topic::Group { mode, .. }   => *mode,
+      Topic::Device { mode, .. }  => *mode,
+    }
+  }
+
+  fn components(&self) -> Vec<String> {
     let mut base = vec![String::from(Self::BASE)];
     base.push(self.kind().to_topic());
     match self {
-      Topic::Home => {}
+      Topic::Home { mode: _mode } => { }
       Topic::Bridge => {
         base.push(String::from("event"));
       }
-      Topic::Room { name } => {
+      Topic::Room { name, mode: _mode } => {
         base.push(name.clone());
       }
-      Topic::Group { name, room, groups } => {
+      Topic::Group { name, room, groups, mode: _mode } => {
         base.push(room.clone());
         base.extend(groups.clone());
         base.push(name.clone());
       }
-      Topic::Device { name, room, groups, device } => {
+      Topic::Device { name, room, groups, device, mode: _mode } => {
         base.push(device.to_topic());
         base.push(room.clone());
         base.extend(groups.clone());
         base.push(name.clone());
       }
     };
-    match mode {
-      TopicMode::Get | TopicMode::Set => base.push(mode.to_topic()),
+    match self.mode() {
+      TopicMode::Get | TopicMode::Set => base.push(self.mode().to_topic()),
       TopicMode::Blank => {}
     };
     base
   }
 
-  pub fn to_str(&self, mode: TopicMode) -> String {
-    self.components(mode).join(Self::SEPARATOR)
+  pub fn to_str(&self) -> String {
+    self.components().join(Self::SEPARATOR)
   }
 
-  fn room_groups_name<'a, I>(mut iter: I) -> Result<(String, Vec<String>, String)>
+  fn room_groups_name<'a, I>(iter: &mut I) -> Result<(String, Vec<String>, String)>
   where
     I: Iterator<Item = &'a str>,
   {
@@ -146,30 +155,51 @@ impl Topic {
     Ok((room, groups.to_vec(), name.to_owned()))
   }
 
+  fn parse_mode<'a, I>(mut iter: I) -> Result<TopicMode>
+  where
+    I: Iterator<Item = &'a str>,
+  {
+    if let Some(next) = iter.next() {
+      if iter.count() > 0 {
+        return Err(Error::InvalidTopic);
+      }
+      return TopicMode::from_str(next)
+    }
+    Ok(TopicMode::Blank)
+  }
+
   pub fn try_from(value: String) -> Result<Self> {
+    // todo: Regex
     let mut split = value.split(Topic::SEPARATOR);
     if split.next().ok_or(Error::InvalidTopic)? != Self::BASE {
       return Err(Error::InvalidTopic);
     }
     let kind = split.next().map(TopicKind::from_str).ok_or(Error::InvalidTopic)??;
     match kind {
-      TopicKind::Home => Ok(Topic::Home),
+      TopicKind::Home => {
+        let mode = Self::parse_mode(split)?;
+        Ok(Topic::Home { mode })
+      }
       TopicKind::Bridge if split.next().ok_or(Error::InvalidTopic)? == "event" => Ok(Topic::Bridge),
       TopicKind::Bridge => Err(Error::InvalidTopic),
       TopicKind::Room => {
         let name = split.next().map(String::from).ok_or(Error::InvalidTopic)?;
-        Ok(Topic::Room { name })
+        let mode = Self::parse_mode(split)?;
+        Ok(Topic::Room { name, mode })
       }
       TopicKind::Group => {
-        let (room, groups, name) = Self::room_groups_name(split)?;
-        Ok(Topic::Group { room, groups, name })
+        let (room, groups, name) = Self::room_groups_name(&mut split)?;
+        let mode = Self::parse_mode(split)?;
+        Ok(Topic::Group { room, groups, name, mode })
       }
       TopicKind::Device => {
         let device: DeviceKind =
           split.next().map(DeviceKind::from_str).ok_or(Error::InvalidTopic)??;
-        let (room, groups, name) = Self::room_groups_name(split)?;
-        Ok(Topic::Device { device, room, groups, name })
+        let (room, groups, name) = Self::room_groups_name(&mut split)?;
+        let mode = Self::parse_mode(split)?;
+        Ok(Topic::Device { device, room, groups, name, mode })
       }
     }
   }
+
 }
