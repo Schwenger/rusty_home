@@ -1,4 +1,5 @@
-use super::{ExecutorLogic, Queryable};
+use super::{ExecutorLogic, Queryable, JsonPayload};
+use tokio::sync::oneshot::Sender;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Query {
@@ -6,10 +7,10 @@ pub enum Query {
 }
 
 impl ExecutorLogic {
-  pub(super) async fn respond(&mut self, to: Query) {
+  pub(super) async fn respond(&mut self, to: Query, over: Sender<JsonPayload>) {
     let res = match to {
       Query::Architecture => self.home.query_architecture(),
     };
-    self.response.start_send(res).expect("Failed to send response.");
+    over.send(res).expect("Failed to send response.");
   }
 }

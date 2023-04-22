@@ -1,17 +1,14 @@
-use futures::{
-  channel::mpsc::{UnboundedReceiver, UnboundedSender},
-  never::Never,
-  StreamExt,
-};
+
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::{
-  api::{JsonPayload, Request},
+  api::Request,
   home::Home,
   mqtt::ProtectedClient,
   Result,
 };
 
-#[derive(Debug)]
+#[allow(missing_debug_implementations)]
 pub struct Executor {
   inner: ExecutorLogic,
   requests: UnboundedReceiver<Request>,
@@ -21,36 +18,32 @@ impl Executor {
   pub fn new(
     requests: UnboundedReceiver<Request>,
     client: ProtectedClient,
-    response: UnboundedSender<JsonPayload>,
     home: Home,
   ) -> Self {
-    let inner = ExecutorLogic { client, home, response };
+    let inner = ExecutorLogic { client, home };
     Executor { requests, inner }
   }
 
-  pub async fn run(self) -> Result<Never> {
-    let Executor { requests, inner } = self;
-    requests
-      .fold(inner, |mut inner, req| async {
-        inner.process(req).await;
-        inner
-      })
-      .await;
-    unreachable!()
+  pub async fn run(self) -> Result<()> {
+    let Executor { mut requests, mut inner } = self;
+    loop {
+      let req = requests.recv().await;
+      inner.process(req.unwrap()).await;
+    }
   }
 }
 
-#[derive(Debug, Clone)]
+#[allow(missing_debug_implementations)]
+#[derive(Clone)]
 pub struct ExecutorLogic {
   pub(super) client: ProtectedClient,
   pub(super) home: Home,
-  pub(super) response: UnboundedSender<JsonPayload>,
 }
 
 impl ExecutorLogic {
   async fn process(&mut self, req: Request) {
     match req {
-      Request::Query(query) => self.respond(query).await,
+      Request::Query(query, resp) => self.respond(query, resp).await,
       Request::LightCommand(lc) => self.execute_light(lc).await,
       Request::HomeEdit(he) => self.edit_home(he).await,
       Request::General(general) => self.execute_general(general).await,

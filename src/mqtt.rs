@@ -1,11 +1,11 @@
-use std::{sync::Arc, thread, time::Duration};
+use std::{thread, time::Duration, sync::Arc};
 
 use crate::{
   api::{JsonConvertible, MqttPayload, Topic, TopicMode},
   Result,
 };
-use futures::{lock::Mutex, never::Never, stream, StreamExt};
 use paho_mqtt::{AsyncClient, AsyncReceiver, CreateOptionsBuilder, Message, QOS_1};
+use tokio::sync::Mutex;
 
 #[derive(Clone)]
 #[allow(missing_debug_implementations)]
@@ -13,7 +13,8 @@ pub struct MqttClient {
   client: AsyncClient,
 }
 
-#[derive(Debug, Clone)]
+#[allow(missing_debug_implementations)]
+#[derive(Clone)]
 pub struct MqttReceiver {
   stream: AsyncReceiver<Option<Message>>,
   client: ProtectedClient,
@@ -33,19 +34,15 @@ pub async fn setup_client(host: &str, port: u16) -> Result<(ProtectedClient, Mqt
 }
 
 impl MqttReceiver {
-  pub async fn run(self) -> Result<Never> {
+  pub async fn run(self) -> Result<()> {
     println!("Starting to receive.");
-    self
-      .stream
-      .for_each_concurrent(None, |msg| async {
-        println!("Receft.");
-        match msg {
-          None => {} //self.client.lock().await.attempt_reconnect().await,
-          Some(msg) => self.client.lock().await.handle_message(msg).await,
-        }
-      })
-      .await;
-    unreachable!()
+    loop {
+      let msg = self.stream.recv().await;
+      match msg {
+        Ok(None) | Err(_) => { } //self.client.lock().await.attempt_reconnect().await,
+        Ok(Some(msg)) => self.client.lock().await.handle_message(msg).await,
+      }
+    }
   }
 }
 
@@ -75,7 +72,9 @@ impl MqttClient {
   }
 
   pub async fn query_states(&self, topics: &[&str]) {
-    stream::iter(topics).for_each_concurrent(None, |topic| self.query_state(topic)).await;
+    for topic in topics {
+      self.query_state(topic).await
+    }
   }
 
   async fn query_state(&self, _topic: &str) {
@@ -83,7 +82,9 @@ impl MqttClient {
   }
 
   pub async fn subscribe_to_all(&self, topics: &[&str]) {
-    stream::iter(topics).for_each_concurrent(None, |topic| self.subscribe_to(topic)).await;
+    for topic in topics {
+      self.subscribe_to(topic).await
+    }
   }
 
   async fn subscribe_to(&self, topic: &str) {

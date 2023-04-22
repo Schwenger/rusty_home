@@ -1,8 +1,10 @@
-use super::{home_edit::HomeEdit, light_command::LightCommand, query::Query, General};
+use tokio::sync::oneshot::Sender;
 
-#[derive(Debug, Clone)]
+use super::{home_edit::HomeEdit, light_command::LightCommand, query::Query, General, JsonPayload};
+
+#[derive(Debug)]
 pub enum Request {
-  Query(Query),
+  Query(Query, Sender<JsonPayload>),
   LightCommand(LightCommand),
   HomeEdit(HomeEdit),
   General(General),

@@ -15,7 +15,6 @@ use common::Scalar;
 use config::GlobalConfig;
 use controller::Controller;
 use error::HomeBaseError;
-use futures::executor::block_on;
 
 pub mod api;
 pub mod common;
@@ -30,8 +29,9 @@ pub mod web_server;
 type Error = HomeBaseError;
 pub type Result<T> = std::result::Result<T, Error>;
 
-fn main() -> Result<()> {
-  let controller: Controller = GlobalConfig::read()?.try_into()?;
-  block_on(async { controller.run().await });
+#[tokio::main]
+async fn main() -> Result<()> {
+  let controller: Controller = GlobalConfig::read()?.try_into().await?;
+  controller.run().await;
   Ok(())
 }

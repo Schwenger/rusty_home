@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{controller::Controller, Error, Result};
+use crate::{controller::Controller, Result};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GlobalConfig {
@@ -13,15 +13,11 @@ impl GlobalConfig {
   pub fn read() -> Result<GlobalConfig> {
     let content = std::fs::read_to_string("config/global.yml")?;
     let cfg: GlobalConfig = serde_yaml::from_str(&content).unwrap();
-    println!("{:?}", cfg);
     Ok(cfg)
   }
-}
 
-impl TryInto<Controller> for GlobalConfig {
-  type Error = Error;
-  fn try_into(self) -> Result<Controller> {
-    Controller::new(self)
+  pub async fn try_into(self) -> Result<Controller> {
+    Controller::new(self).await
   }
 }
 

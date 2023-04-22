@@ -1,11 +1,11 @@
-use std::thread::{sleep, self};
+use std::thread::sleep;
 use std::time::Duration;
 
 use crate::api::{Request, General};
 use crate::home::Home;
 use crate::web_server::WebServer;
-use futures::channel::mpsc::UnboundedSender;
-use futures::{channel::mpsc::unbounded, executor::block_on, join, pin_mut, select, FutureExt};
+use tokio::{join, select, pin};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
 use crate::{
   api::Executor,
@@ -14,7 +14,7 @@ use crate::{
   Error,
 };
 
-#[derive(Debug)]
+#[allow(missing_debug_implementations)]
 pub struct Controller {
   mqtt_receiver: MqttReceiver,
   executor: Executor,
@@ -22,23 +22,22 @@ pub struct Controller {
 }
 
 impl Controller {
-  pub fn new(config: GlobalConfig) -> Result<Self, Error> {
-    let (client, mqtt_receiver) = block_on(async { Self::setup_client(&config).await })?;
+  pub async fn new(config: GlobalConfig) -> Result<Self, Error> {
+    let (client, mqtt_receiver) =  Self::setup_client(&config).await?;
     let home = Home::from(&config);
-    let (web_send, _web_recv) = unbounded(); // Create in WebApi
-    let (q_send, q_recv) = unbounded(); // Distribute send more liberally.
-    let executor = Executor::new(q_recv, client, web_send, home);
-    let web_server = WebServer::new();
+    let (q_send, q_recv) = unbounded_channel(); // Distribute send more liberally.
+    let executor = Executor::new(q_recv, client, home);
+    let web_server = WebServer::new(q_send.clone());
     Self::startup(q_send, &config.home.dir);
     Ok(Self { mqtt_receiver, executor, web_server })
   }
 
-  pub fn startup(mut queue: UnboundedSender<Request>, home_path: &str) {
+  pub fn startup(queue: UnboundedSender<Request>, home_path: &str) {
     let s = home_path.to_string();
     ctrlc::set_handler(move || {
       eprintln!("Detected shutdown. Initiating procedure.");
       let req = Request::General(General::Shutdown { home_path: s.clone() });
-      queue.start_send(req).unwrap();
+      queue.send(req).expect("Cannot send.");
       sleep(Duration::from_secs(1));
       std::process::exit(0);
     })
@@ -59,16 +58,18 @@ impl Controller {
   }
 
   pub async fn run(self) -> ! {
+    println!("Running controller.");
     let Controller { mqtt_receiver, executor, web_server, .. } = self;
-    let mqtt_recv = mqtt_receiver.run().fuse();
-    let requ_exec = executor.run().fuse();
-    let _web_hndl = thread::spawn(|| web_server.run());
+    let mqtt_recv = mqtt_receiver.run();
+    let requ_exec = executor.run();
+    let web_serve = web_server.run();
 
-    pin_mut!(mqtt_recv, requ_exec);
+    pin!(mqtt_recv, requ_exec, web_serve);
 
     select! {
       err = mqtt_recv => eprintln!("{:?}", err.unwrap_err()),
       err = requ_exec => eprintln!("{:?}", err.unwrap_err()),
+      err = web_serve => eprintln!("{:?}", err.unwrap_err()),
     }; // Todo: Handle if one of them returned.  Re-use all but the crashed one.
     unreachable!()
   }

@@ -21,9 +21,7 @@ pub struct Home {
 impl From<&GlobalConfig> for Home {
   fn from(cfg: &GlobalConfig) -> Self {
     let content = std::fs::read_to_string(&cfg.home.dir).expect("Cannot open file.");
-    print!("{:?}", content);
     let home: Home = serde_yaml::from_str(&content).expect("Cannot read home.");
-    println!("{:?}", home);
     home
   }
 }
