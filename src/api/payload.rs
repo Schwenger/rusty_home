@@ -72,9 +72,9 @@ impl MqttPayload {
 }
 
 impl Default for MqttPayload {
-    fn default() -> Self {
-        Self::new()
-    }
+  fn default() -> Self {
+    Self::new()
+  }
 }
 
 impl JsonConvertible for MqttPayload {

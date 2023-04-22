@@ -1,14 +1,16 @@
-use super::{ExecutorLogic, Topic, MqttPayload};
+use super::{ExecutorLogic, MqttPayload, Topic};
 
 #[derive(Debug, Clone)]
 pub enum LightCommand {
-  TurnOn { target: Topic }
+  TurnOn { target: Topic },
 }
 
 impl ExecutorLogic {
   pub(super) async fn execute_light(&mut self, cmd: LightCommand) {
     match cmd {
-      LightCommand::TurnOn { target } => self.client.lock().await.publish(target, MqttPayload::new().with_state_change(true)).await
+      LightCommand::TurnOn { target } => {
+        self.client.lock().await.publish(target, MqttPayload::new().with_state_change(true)).await
+      }
     }
   }
 }

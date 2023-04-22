@@ -1,6 +1,9 @@
 use std::{sync::Arc, thread, time::Duration};
 
-use crate::{Result, api::{Topic, TopicMode, MqttPayload, JsonConvertible}};
+use crate::{
+  api::{JsonConvertible, MqttPayload, Topic, TopicMode},
+  Result,
+};
 use futures::{lock::Mutex, never::Never, stream, StreamExt};
 use paho_mqtt::{AsyncClient, AsyncReceiver, CreateOptionsBuilder, Message, QOS_1};
 

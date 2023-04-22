@@ -10,7 +10,7 @@ pub enum HomeEdit {
 impl ExecutorLogic {
   pub(super) async fn edit_home(&mut self, edit: HomeEdit) {
     match edit {
-      HomeEdit::AddRoom { name } => self.home.add_room(name)
+      HomeEdit::AddRoom { name } => self.home.add_room(name),
     }
   }
 }

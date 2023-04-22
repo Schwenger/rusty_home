@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  api::{JsonPayload, Queryable, Editable},
+  api::{Editable, JsonPayload, Queryable},
   config::GlobalConfig,
 };
 
@@ -26,9 +26,9 @@ impl From<&GlobalConfig> for Home {
 }
 
 impl Editable for Home {
-    fn add_room(&mut self, name: String) {
-        self.rooms.push(Room::new(name))
-    }
+  fn add_room(&mut self, name: String) {
+    self.rooms.push(Room::new(name))
+  }
 }
 
 impl Queryable for Home {

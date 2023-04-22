@@ -1,3 +1,6 @@
+use lazy_static::lazy_static;
+use regex::{Regex, Captures};
+
 use crate::{api::TopicConvertible, Error, Result};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -78,7 +81,7 @@ impl TopicConvertible for TopicKind {
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Topic {
   Home { mode: TopicMode },
   Bridge,
@@ -93,21 +96,21 @@ impl Topic {
 
   pub fn kind(&self) -> TopicKind {
     match self {
-      Topic::Home { .. }    => TopicKind::Home,
-      Topic::Bridge         => TopicKind::Bridge,
-      Topic::Room { .. }    => TopicKind::Room,
-      Topic::Group { .. }   => TopicKind::Group,
-      Topic::Device { .. }  => TopicKind::Device,
+      Topic::Home { .. } => TopicKind::Home,
+      Topic::Bridge => TopicKind::Bridge,
+      Topic::Room { .. } => TopicKind::Room,
+      Topic::Group { .. } => TopicKind::Group,
+      Topic::Device { .. } => TopicKind::Device,
     }
   }
 
   pub fn mode(&self) -> TopicMode {
     match self {
-      Topic::Home { mode }        => *mode,
-      Topic::Bridge                           => TopicMode::Blank,
-      Topic::Room { mode, .. }    => *mode,
-      Topic::Group { mode, .. }   => *mode,
-      Topic::Device { mode, .. }  => *mode,
+      Topic::Home { mode } => *mode,
+      Topic::Bridge => TopicMode::Blank,
+      Topic::Room { mode, .. } => *mode,
+      Topic::Group { mode, .. } => *mode,
+      Topic::Device { mode, .. } => *mode,
     }
   }
 
@@ -115,7 +118,7 @@ impl Topic {
     let mut base = vec![String::from(Self::BASE)];
     base.push(self.kind().to_topic());
     match self {
-      Topic::Home { mode: _mode } => { }
+      Topic::Home { mode: _mode } => {}
       Topic::Bridge => {
         base.push(String::from("event"));
       }
@@ -145,61 +148,124 @@ impl Topic {
     self.components().join(Self::SEPARATOR)
   }
 
-  fn room_groups_name<'a, I>(iter: &mut I) -> Result<(String, Vec<String>, String)>
-  where
-    I: Iterator<Item = &'a str>,
-  {
-    let room = iter.next().ok_or(Error::InvalidTopic).map(String::from)?;
-    let vec: Vec<String> = iter.map(String::from).collect();
-    let (name, groups) = vec.split_last().ok_or(Error::InvalidTopic)?;
-    Ok((room, groups.to_vec(), name.to_owned()))
-  }
-
-  fn parse_mode<'a, I>(mut iter: I) -> Result<TopicMode>
-  where
-    I: Iterator<Item = &'a str>,
-  {
-    if let Some(next) = iter.next() {
-      if iter.count() > 0 {
-        return Err(Error::InvalidTopic);
-      }
-      return TopicMode::from_str(next)
-    }
-    Ok(TopicMode::Blank)
-  }
+  const REGEX_HOME:   &str = r"^zigbee2mqtt/Home(?:/(P?<mode>set|get))?$";
+  const REGEX_BRIDGE: &str = r"^zigbee2mqtt/bridge/event$";
+  const REGEX_ROOM:   &str = r"^zigbee2mqtt/Room/(?P<name>(?:\w| )+)(?:/(?P<mode>set|get))?$";
+  const REGEX_GROUP:  &str = r"^zigbee2mqtt/Group/(?P<room>(?:\w| )+)(?:/(?:\w| )+)*?/(?P<name>(?:\w| )+)(?:/(?P<mode>set|get))?$";
+  const REGEX_DEVICE: &str = r"^zigbee2mqtt/Device/(?P<kind>(?:\w| )+)/(?P<room>(?:\w| )+)(?:/(?:\w| )+)*?/(?P<name>(?:\w| )+)(?:/(?P<mode>set|get))?$";
 
   pub fn try_from(value: String) -> Result<Self> {
-    // todo: Regex
-    let mut split = value.split(Topic::SEPARATOR);
-    if split.next().ok_or(Error::InvalidTopic)? != Self::BASE {
-      return Err(Error::InvalidTopic);
+    lazy_static! {
+      static ref RE_HOME:   Regex = Regex::new(Topic::REGEX_HOME).unwrap();
+      static ref RE_BRIDGE: Regex = Regex::new(Topic::REGEX_BRIDGE).unwrap();
+      static ref RE_ROOM:   Regex = Regex::new(Topic::REGEX_ROOM  ).unwrap();
+      static ref RE_GROUP:  Regex = Regex::new(Topic::REGEX_GROUP ).unwrap();
+      static ref RE_DEVICE: Regex = Regex::new(Topic::REGEX_DEVICE).unwrap();
     }
-    let kind = split.next().map(TopicKind::from_str).ok_or(Error::InvalidTopic)??;
-    match kind {
-      TopicKind::Home => {
-        let mode = Self::parse_mode(split)?;
-        Ok(Topic::Home { mode })
-      }
-      TopicKind::Bridge if split.next().ok_or(Error::InvalidTopic)? == "event" => Ok(Topic::Bridge),
-      TopicKind::Bridge => Err(Error::InvalidTopic),
-      TopicKind::Room => {
-        let name = split.next().map(String::from).ok_or(Error::InvalidTopic)?;
-        let mode = Self::parse_mode(split)?;
-        Ok(Topic::Room { name, mode })
-      }
-      TopicKind::Group => {
-        let (room, groups, name) = Self::room_groups_name(&mut split)?;
-        let mode = Self::parse_mode(split)?;
-        Ok(Topic::Group { room, groups, name, mode })
-      }
-      TopicKind::Device => {
-        let device: DeviceKind =
-          split.next().map(DeviceKind::from_str).ok_or(Error::InvalidTopic)??;
-        let (room, groups, name) = Self::room_groups_name(&mut split)?;
-        let mode = Self::parse_mode(split)?;
-        Ok(Topic::Device { device, room, groups, name, mode })
-      }
+    if let Some(captures) = RE_HOME.captures(&value) {
+      let mode = Self::read_mode(&captures);
+      return Ok(Topic::Home { mode })
     }
+    if RE_BRIDGE.is_match(&value) {
+      return Ok(Topic::Bridge)
+    }
+    if let Some(captures) = RE_ROOM.captures(&value) {
+      let name = captures.name("name").unwrap().as_str().to_string();
+      let mode = Self::read_mode(&captures);
+      return Ok(Topic::Room { name, mode })
+    }
+    if let Some(captures) = RE_GROUP.captures(&value) {
+      let room = captures.name("room").unwrap().as_str().to_string();
+      let name = captures.name("name").unwrap().as_str().to_string();
+      let mode = Self::read_mode(&captures);
+      let groups = Self::read_groups(&value, mode, 3).into_iter().map(String::from).collect();
+      return Ok(Topic::Group { room, groups, name, mode })
+    }
+    if let Some(captures) = RE_DEVICE.captures(&value) {
+      let room = captures.name("room").unwrap().as_str().to_string();
+      let device = DeviceKind::from_str(captures.name("kind").unwrap().as_str())?;
+      let mode = Self::read_mode(&captures);
+      let name = captures.name("name").unwrap().as_str().to_string();
+      let groups = Self::read_groups(&value, mode, 4).into_iter().map(String::from).collect();
+      return Ok(Topic::Device { device, room, groups, name, mode })
+    }
+    Err(Error::InvalidTopic)
   }
 
+  fn read_mode(cap: &Captures) -> TopicMode {
+    cap.name("mode").map(|m| m.as_str()).map(|m| TopicMode::from_str(m).unwrap()).unwrap_or(TopicMode::Blank)
+  }
+
+  fn read_groups(topic: &str, mode: TopicMode, skip: usize) -> Vec<&str> {
+    let split: Vec<&str> = topic.split(Self::SEPARATOR).collect();
+    let start = skip;
+    let end = split.len();
+    let end = end - 1; // For name.
+    let end = end - if mode == TopicMode::Blank { 0 } else { 1 };
+    split[start..end].to_vec()
+  }
+}
+
+#[cfg(test)]
+mod test {
+
+  use crate::api::DeviceKind;
+
+  use super::{Topic, TopicMode};
+
+  #[test]
+  fn test_out_home() {
+    let topic = Topic::Home { mode: TopicMode::Get };
+    assert_eq!(topic.to_str(), "zigbee2mqtt/Home/get");
+    let re_topic = Topic::try_from(topic.to_str());
+    assert!(re_topic.is_ok());
+    assert_eq!(re_topic.unwrap(), topic);
+  }
+
+  #[test]
+  fn test_out_bridge() {
+    let topic = Topic::Bridge;
+    assert_eq!(topic.to_str(), "zigbee2mqtt/bridge/event");
+    let re_topic = Topic::try_from(topic.to_str());
+    assert!(re_topic.is_ok());
+    assert_eq!(re_topic.unwrap(), topic);
+  }
+
+  #[test]
+  fn test_out_room() {
+    let topic = Topic::Room { name: String::from("Living Room"), mode: TopicMode::Set };
+    assert_eq!(topic.to_str(), "zigbee2mqtt/Room/Living Room/set");
+    let re_topic = Topic::try_from(topic.to_str());
+    assert!(re_topic.is_ok());
+    assert_eq!(re_topic.unwrap(), topic);
+  }
+
+  #[test]
+  fn test_out_group() {
+    let topic = Topic::Group {
+      room: String::from("Office"),
+      groups: vec![String::from("Low"), String::from("Middle"), String::from("Last")],
+      name: String::from("Main"),
+      mode: TopicMode::Blank,
+    };
+    assert_eq!(topic.to_str(), "zigbee2mqtt/Group/Office/Low/Middle/Last/Main");
+    let re_topic = Topic::try_from(topic.to_str());
+    assert!(re_topic.is_ok());
+    assert_eq!(re_topic.unwrap(), topic);
+  }
+
+  #[test]
+  fn test_out_device() {
+    let topic = Topic::Device {
+      device: DeviceKind::Light,
+      room: String::from("Office"),
+      groups: vec![String::from("Grp")],
+      name: String::from("Comfort Light"),
+      mode: TopicMode::Get,
+    };
+    assert_eq!(topic.to_str(), "zigbee2mqtt/Device/Light/Office/Grp/Comfort Light/get");
+    let re_topic = Topic::try_from(topic.to_str());
+    assert!(re_topic.is_ok());
+    assert_eq!(re_topic.unwrap(), topic);
+  }
 }
