@@ -40,7 +40,7 @@ impl MqttReceiver {
       .for_each_concurrent(None, |msg| async {
         println!("Receft.");
         match msg {
-          None => self.client.lock().await.attempt_reconnect().await,
+          None => {} //self.client.lock().await.attempt_reconnect().await,
           Some(msg) => self.client.lock().await.handle_message(msg).await,
         }
       })
@@ -64,6 +64,7 @@ impl MqttClient {
     todo!()
   }
 
+  #[allow(dead_code)]
   async fn attempt_reconnect(&self) {
     println!("Detected disconnect.  Attempting to reconnect now.");
     while self.client.connect(None).await.is_err() {

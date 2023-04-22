@@ -23,16 +23,15 @@ pub mod config;
 pub mod controller;
 pub mod devices;
 pub mod error;
-pub mod frame;
 pub mod home;
 pub mod mqtt;
+pub mod web_server;
 
 type Error = HomeBaseError;
 pub type Result<T> = std::result::Result<T, Error>;
 
 fn main() -> Result<()> {
   let controller: Controller = GlobalConfig::read()?.try_into()?;
-  controller.test_mode();
   block_on(async { controller.run().await });
   Ok(())
 }

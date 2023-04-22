@@ -53,6 +53,7 @@ impl ExecutorLogic {
       Request::Query(query) => self.respond(query).await,
       Request::LightCommand(lc) => self.execute_light(lc).await,
       Request::HomeEdit(he) => self.edit_home(he).await,
+      Request::General(general) => self.execute_general(general).await,
     }
   }
 }

@@ -1,4 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct Sensor {}
+use super::DeviceModel;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Sensor {
+  model: DeviceModel,
+  name: String,
+  icon: String,
+}

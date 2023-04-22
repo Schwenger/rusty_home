@@ -1,0 +1,49 @@
+name: MyHome
+rooms:
+- name: Living Room
+  lights:
+    name: Main
+    atomics:
+    - name: Comfort Light
+      model: IkeaOutlet
+      icon: light.cylindrical.ceiling.inverse
+    - name: Uplight/Reading
+      model: IkeaDimmable
+      icon: headlight.low.beam.fill
+    - name: Uplight/Main
+      model: HueColor
+      icon: lamp.floor.fill
+    - name: Orb
+      model: HueColor
+      icon: circle.fill
+    subgroups: []
+  sensors:
+  - model: TuyaHumidity
+    name: HumidiTemp
+    icon: sensor.fill
+  remotes:
+  - name: Remote
+    kind: IkeaMulti
+    icon: speedometer
+    controls: Living Room
+    actions:
+  - name: Dimmer
+    kind: IkeaDimmer
+    icon: av.remote.fill
+    controls: Living Room
+    actions:
+- name: Office
+  lights:
+    name: Main
+    atomics:
+    - name: Comfort Light
+      model: IkeaOutlet
+      icon: light.cylindrical.ceiling.inverse
+    subgroups: []
+  sensors: []
+  remotes:
+  - name: Dimmer
+    kind: IkeaDimmer
+    icon: av.remote.fill
+    controls: Office
+    actions:

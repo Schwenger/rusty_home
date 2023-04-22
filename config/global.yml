@@ -4,8 +4,8 @@ mosquitto:
     port: 1883
 
 log:
-    dir: "/Users/schwenger/Workspace/smart_home/log"
+    dir: "/Users/schwenger/Workspace/rusty_home/log"
     format: "%(levelname)s\t%(asctime)s\t%(name)s::%(filename)s:%(lineno)d → %(message)s"
 
 home:
-    dir: "/Users/schwenger/Workspace/smart_home/config/home.yml"
+    dir: "/Users/schwenger/Workspace/rusty_home/config/home.yml"

@@ -1,23 +1,24 @@
-use std::thread::sleep;
+use std::thread::{sleep, self};
 use std::time::Duration;
 
-use crate::api::{DeviceKind, MqttPayload, Topic, TopicMode};
+use crate::api::{Request, General};
 use crate::home::Home;
+use crate::web_server::WebServer;
+use futures::channel::mpsc::UnboundedSender;
 use futures::{channel::mpsc::unbounded, executor::block_on, join, pin_mut, select, FutureExt};
 
 use crate::{
   api::Executor,
   config::GlobalConfig,
-  frame,
   mqtt::{self, MqttReceiver, ProtectedClient},
   Error,
 };
 
 #[derive(Debug)]
 pub struct Controller {
-  client: ProtectedClient,
   mqtt_receiver: MqttReceiver,
   executor: Executor,
+  web_server: WebServer,
 }
 
 impl Controller {
@@ -25,32 +26,23 @@ impl Controller {
     let (client, mqtt_receiver) = block_on(async { Self::setup_client(&config).await })?;
     let home = Home::from(&config);
     let (web_send, _web_recv) = unbounded(); // Create in WebApi
-    let (_q_send, q_recv) = unbounded(); // Distribute send more liberally.
-    let executor = Executor::new(q_recv, client.clone(), web_send, home);
-    frame::startup(client.clone());
-    Ok(Self { client, mqtt_receiver, executor })
+    let (q_send, q_recv) = unbounded(); // Distribute send more liberally.
+    let executor = Executor::new(q_recv, client, web_send, home);
+    let web_server = WebServer::new();
+    Self::startup(q_send, &config.home.dir);
+    Ok(Self { mqtt_receiver, executor, web_server })
   }
 
-  pub fn test_mode(&self) {
-    block_on(async {
-      let topic = Topic::Device {
-        name: "Orb".to_string(),
-        room: "Living Room".to_string(),
-        groups: vec![],
-        device: DeviceKind::Light,
-        mode: TopicMode::Set,
-      };
-      let payload = MqttPayload::new()
-        .with_state_change(true)
-        .with_brightness_change(0.75.into())
-        .with_transition();
-      println!("Publishing");
-      self.client.lock().await.publish(topic, payload).await;
-      println!("Disconnecting");
-      self.client.lock().await.disconnect().await;
-      println!("Nap Time.");
-      sleep(Duration::from_secs(20));
-    });
+  pub fn startup(mut queue: UnboundedSender<Request>, home_path: &str) {
+    let s = home_path.to_string();
+    ctrlc::set_handler(move || {
+      eprintln!("Detected shutdown. Initiating procedure.");
+      let req = Request::General(General::Shutdown { home_path: s.clone() });
+      queue.start_send(req).unwrap();
+      sleep(Duration::from_secs(1));
+      std::process::exit(0);
+    })
+    .expect("Failed to set shutdown handler.");
   }
 
   async fn setup_client(config: &GlobalConfig) -> Result<(ProtectedClient, MqttReceiver), Error> {
@@ -67,9 +59,10 @@ impl Controller {
   }
 
   pub async fn run(self) -> ! {
-    let Controller { client: _client, mqtt_receiver, executor } = self;
+    let Controller { mqtt_receiver, executor, web_server, .. } = self;
     let mqtt_recv = mqtt_receiver.run().fuse();
     let requ_exec = executor.run().fuse();
+    let _web_hndl = thread::spawn(|| web_server.run());
 
     pin_mut!(mqtt_recv, requ_exec);
 
