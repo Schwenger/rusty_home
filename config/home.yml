@@ -1,6 +1,7 @@
 name: MyHome
 rooms:
 - name: Living Room
+  icon: sofa.fill
   lights:
     name: Main
     atomics:
@@ -23,16 +24,17 @@ rooms:
     icon: sensor.fill
   remotes:
   - name: Remote
-    kind: IkeaMulti
+    model: IkeaMultiButton
     icon: speedometer
     controls: Living Room
     actions:
   - name: Dimmer
-    kind: IkeaDimmer
+    model: IkeaDimmer
     icon: av.remote.fill
     controls: Living Room
     actions:
 - name: Office
+  icon: laptopcomputer
   lights:
     name: Main
     atomics:
@@ -43,7 +45,7 @@ rooms:
   sensors: []
   remotes:
   - name: Dimmer
-    kind: IkeaDimmer
+    model: IkeaDimmer
     icon: av.remote.fill
     controls: Office
     actions:

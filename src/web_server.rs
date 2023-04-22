@@ -44,7 +44,7 @@ impl WebServer {
     let mut response = Response::new(Body::empty());
     match (req.method(), req.uri().path()) {
       (&Method::GET, "/") => *response.body_mut() = Body::from("Test successful."),
-      (&Method::GET, "/architecture") => {
+      (&Method::GET, "/query/Structure") => {
         let (sender, receiver) = oneshot::channel();
         queue.send(Request::Query(Query::Architecture, sender)).unwrap();
         let resp = receiver.await.unwrap();

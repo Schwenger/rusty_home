@@ -14,6 +14,6 @@ pub enum DeviceModel {
   IkeaOutlet,
   IkeaDimmable,
   HueColor,
-  IkeaMulti,
+  IkeaMultiButton,
   IkeaDimmer,
 }

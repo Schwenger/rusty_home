@@ -6,7 +6,7 @@ use super::DeviceModel;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Remote {
   name: String,
-  kind: DeviceModel,
+  model: DeviceModel,
   icon: String,
   controls: String,
   actions: Vec<String>,

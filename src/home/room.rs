@@ -6,12 +6,13 @@ use crate::devices::{Sensor, LightGroup, Remote};
 pub struct Room {
   name: String,
   lights: LightGroup,
+  icon: String,
   sensors: Vec<Sensor>,
   remotes: Vec<Remote>,
 }
 
 impl Room {
   pub fn new(name: String) -> Self {
-    Room { name, lights: LightGroup::new("Main".to_string()), sensors: vec![], remotes: vec![] }
+    Room { name, lights: LightGroup::new("Main".to_string()), sensors: vec![], remotes: vec![], icon: String::from("square.split.bottomrightquarter.fill") }
   }
 }
