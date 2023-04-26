@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 use crate::api::payload::MqttPayload;
-use crate::api::traits::{DeviceTrait, EffectiveLight, LightCollection};
-use crate::api::DeviceKind;
+use crate::api::traits::{Addressable, EffectiveLight, LightCollection};
+use crate::api::{DeviceKind, Topic, TopicMode};
 use crate::common::Scalar;
 
-use super::DeviceModel;
+use super::{Device, DeviceModel};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Light {
@@ -19,7 +19,7 @@ pub struct Light {
   brightness: Scalar,
 }
 
-impl DeviceTrait for Light {
+impl Device for Light {
   fn kind(&self) -> DeviceKind {
     self.model.kind()
   }
@@ -38,23 +38,23 @@ impl DeviceTrait for Light {
 }
 
 impl EffectiveLight for Light {
-  fn turn_on(&mut self) -> Option<MqttPayload> {
+  fn turn_on(&mut self) -> Vec<(Topic, MqttPayload)> {
     if self.on {
-      return None;
+      return vec![];
     }
     self.on = true;
-    Some(MqttPayload::new().with_state_change(self.on).with_transition())
+    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_state_change(self.on).with_transition())]
   }
 
-  fn turn_off(&mut self) -> Option<MqttPayload> {
+  fn turn_off(&mut self) -> Vec<(Topic, MqttPayload)> {
     if !self.on {
-      return None;
+      return vec![];
     }
     self.on = false;
-    Some(MqttPayload::new().with_state_change(self.on).with_transition())
+    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_state_change(self.on).with_transition())]
   }
 
-  fn toggle(&mut self) -> Option<MqttPayload> {
+  fn toggle(&mut self) -> Vec<(Topic, MqttPayload)> {
     if self.on {
       self.turn_off()
     } else {
@@ -62,27 +62,27 @@ impl EffectiveLight for Light {
     }
   }
 
-  fn dim_down(&mut self) -> Option<MqttPayload> {
+  fn dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
     self.brightness -= 0.2;
-    Some(MqttPayload::new().with_brightness_change(self.brightness).with_transition())
+    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_brightness_change(self.brightness).with_transition())]
   }
 
-  fn dim_up(&mut self) -> Option<MqttPayload> {
+  fn dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
     self.brightness += 0.2;
-    Some(MqttPayload::new().with_brightness_change(self.brightness).with_transition())
+    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_brightness_change(self.brightness).with_transition())]
   }
 
-  fn start_dim_down(&mut self) -> Option<MqttPayload> {
-    Some(MqttPayload::new().with_start_dimming(false).with_transition())
+  fn start_dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
+    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_start_dimming(false).with_transition())]
   }
 
-  fn start_dim_up(&mut self) -> Option<MqttPayload> {
-    Some(MqttPayload::new().with_start_dimming(true).with_transition())
+  fn start_dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
+    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_start_dimming(true).with_transition())]
   }
 
-  fn stop_dim(&mut self) -> Option<MqttPayload> {
+  fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)> {
     // ToDo: Query state to keep internal brightness up to date.
-    Some(MqttPayload::new().with_stop_dimming().with_transition())
+    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_stop_dimming().with_transition())]
   }
 }
 
@@ -91,11 +91,18 @@ pub struct LightGroup {
   name: String,
   atomics: Vec<Light>,
   subgroups: Vec<LightGroup>,
+  room: String,
 }
 
 impl LightGroup {
-  pub fn new(name: String) -> Self {
-    LightGroup { name, atomics: vec![], subgroups: vec![] }
+  pub fn new(name: String, room: String) -> Self {
+    LightGroup { name, atomics: vec![], subgroups: vec![], room }
+  }
+}
+
+impl Addressable for LightGroup {
+  fn topic(&self, mode: TopicMode) -> Topic {
+    Topic::Group { room: self.room.clone(), groups: vec![], name: self.name.clone(), mode }
   }
 }
 
@@ -109,17 +116,24 @@ impl LightCollection for LightGroup {
     let subs = self.subgroups.iter_mut().flat_map(|l| l.flatten_lights_mut());
     self.atomics.iter_mut().chain(subs).collect()
   }
-  // fn find_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight> {
-  //   if let Some(res) = self.atomics.iter().find(|l| &l.topic(topic.mode()) == topic) {
-  //     return Some(res);
-  //   }
-  //   self.subgroups.iter().flat_map(|grp| grp.find_light(topic)).last()
-  // }
 
-  // fn find_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight> {
-  //   if let Some(res) = self.atomics.iter_mut().find(|l| &l.topic(topic.mode()) == topic) {
-  //     return Some(res);
-  //   }
-  //   self.subgroups.iter_mut().flat_map(|grp| grp.find_light_mut(topic)).last()
-  // }
+  fn find_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight> {
+    if &self.topic(topic.mode()) == topic {
+      return Some(self);
+    }
+    if let Some(res) = self.atomics.iter().find(|l| &l.topic(topic.mode()) == topic) {
+      return Some(res);
+    }
+    self.subgroups.iter().flat_map(|grp| grp.find_light(topic)).last()
+  }
+
+  fn find_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight> {
+    if &self.topic(topic.mode()) == topic {
+      return Some(self);
+    }
+    if let Some(res) = self.atomics.iter_mut().find(|l| &l.topic(topic.mode()) == topic) {
+      return Some(res);
+    }
+    self.subgroups.iter_mut().flat_map(|grp| grp.find_light_mut(topic)).last()
+  }
 }

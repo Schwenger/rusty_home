@@ -1,15 +1,18 @@
-use crate::api::traits::Searchable;
+use futures::{StreamExt, stream};
+use serde::{Deserialize, Serialize};
+
+use crate::api::traits::LightCollection;
 
 use super::{ExecutorLogic, Topic};
 
 #[derive(Debug, Clone)]
 pub struct LightCommand {
-  target: Topic,
-  cmd: Command,
+  pub target: Topic,
+  pub cmd: Command,
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Command {
   TurnOn,
   TurnOff,
@@ -24,7 +27,7 @@ pub enum Command {
 impl ExecutorLogic {
   pub(super) async fn execute_light(&mut self, lcmd: LightCommand) {
     let light = self.home.find_light_mut(&lcmd.target).expect("Implement error handling.");
-    let payload = match lcmd.cmd {
+    let payloads = match lcmd.cmd {
       Command::TurnOn => light.turn_on(),
       Command::TurnOff => light.turn_off(),
       Command::Toggle => light.toggle(),
@@ -34,8 +37,8 @@ impl ExecutorLogic {
       Command::StartDimDown => light.start_dim_down(),
       Command::StopDim => light.stop_dim(),
     };
-    if let Some(payload) = payload {
-      self.client.lock().await.publish(lcmd.target, payload).await;
-    }
+    stream::iter(payloads).for_each_concurrent(None, |(t, p)| async {
+      self.client.lock().await.publish(t, p).await
+    }).await;
   }
 }

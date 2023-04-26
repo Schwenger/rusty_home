@@ -1,9 +1,10 @@
 mod executor;
 mod general;
 mod home_edit;
-mod light_command;
+pub mod light_command;
 pub mod payload;
 mod query;
+pub mod remote;
 mod request;
 mod topic;
 pub mod traits;

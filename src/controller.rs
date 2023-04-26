@@ -1,6 +1,8 @@
 use std::thread::sleep;
 use std::time::Duration;
 
+use crate::api::traits::DeviceCollection;
+use crate::api::TopicMode;
 use crate::api::{traits::ReadWriteHome, General, Request};
 use crate::home::Home;
 use crate::web_server::WebServer;
@@ -23,9 +25,9 @@ pub struct Controller {
 
 impl Controller {
   pub async fn new(config: GlobalConfig) -> Result<Self, Error> {
-    let (client, mqtt_receiver) = Self::setup_client(&config).await?;
     let home = Home::read(&config.home.dir);
     let (q_send, q_recv) = unbounded_channel(); // Distribute send more liberally.
+    let (client, mqtt_receiver) = Self::setup_client(&config, &home, q_send.clone()).await?;
     let executor = Executor::new(q_recv, client, home);
     let web_server = WebServer::new(q_send.clone());
     Self::startup(q_send, &config.home.dir);
@@ -44,13 +46,18 @@ impl Controller {
     .expect("Failed to set shutdown handler.");
   }
 
-  async fn setup_client(config: &GlobalConfig) -> Result<(ProtectedClient, MqttReceiver), Error> {
+  async fn setup_client(
+    config: &GlobalConfig,
+    home: &Home,
+    queue: UnboundedSender<Request>,
+  ) -> Result<(ProtectedClient, MqttReceiver), Error> {
     let (client, receiver) =
-      mqtt::setup_client(&config.mosquitto.ip, config.mosquitto.port).await?;
+      mqtt::setup_client(&config.mosquitto.ip, config.mosquitto.port, queue).await?;
     let empty = vec![];
     {
       let client = client.lock().await;
-      let sub = client.subscribe_to_all(&empty);
+      let subscribe = home.flatten_devices().into_iter().map(|d| d.topic(TopicMode::Blank));
+      let sub = client.subscribe_to_all(subscribe);
       let que = client.query_states(&empty);
       join!(sub, que);
     }

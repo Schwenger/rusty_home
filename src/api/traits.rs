@@ -1,9 +1,9 @@
 use crate::api::Topic;
-use crate::devices::{DeviceModel, Light};
+use crate::devices::{Device, Light, Remote, Sensor};
 use crate::Result;
 
 use super::payload::{JsonPayload, MqttPayload};
-use super::{DeviceKind, TopicMode};
+use super::TopicMode;
 
 pub trait QueryableHome {
   fn query_architecture(&self) -> JsonPayload;
@@ -13,66 +13,102 @@ pub trait QueryableHome {
 pub trait LightCollection {
   fn flatten_lights(&self) -> Vec<&Light>;
   fn flatten_lights_mut(&mut self) -> Vec<&mut Light>;
+  fn find_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight>;
+  fn find_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight>;
+}
+
+pub trait RemoteCollection {
+  fn flatten_remotes(&self) -> Vec<&Remote>;
+  fn flatten_remotes_mut(&mut self) -> Vec<&mut Remote>;
+
+  fn find_remote(&self, topic: &Topic) -> Option<&Remote> {
+    self.flatten_remotes().into_iter().find(|s| &s.topic(topic.mode()) == topic)
+  }
+
+  fn find_remote_mut(&mut self, topic: &Topic) -> Option<&mut Remote> {
+    self.flatten_remotes_mut().into_iter().find(|s| &s.topic(topic.mode()) == topic)
+  }
+}
+
+pub trait SensorCollection {
+  fn flatten_sensors(&self) -> Vec<&Sensor>;
+  fn flatten_sensors_mut(&mut self) -> Vec<&mut Sensor>;
+
+  fn find_sensor(&self, topic: &Topic) -> Option<&Sensor> {
+    self.flatten_sensors().into_iter().find(|s| &s.topic(topic.mode()) == topic)
+  }
+
+  fn find_sensor_mut(&mut self, topic: &Topic) -> Option<&mut Sensor> {
+    self.flatten_sensors_mut().into_iter().find(|s| &s.topic(topic.mode()) == topic)
+  }
+}
+
+pub trait DeviceCollection {
+  fn flatten_devices(&self) -> Vec<&dyn Device>;
+}
+
+impl<T> DeviceCollection for T
+where
+  T: SensorCollection + RemoteCollection + LightCollection,
+{
+  fn flatten_devices(&self) -> Vec<&dyn Device> {
+    std::iter::empty()
+      .chain(self.flatten_lights().into_iter().map(|x| {
+        let y: &dyn Device = x;
+        y
+      }))
+      .chain(self.flatten_remotes().into_iter().map(|x| {
+        let y: &dyn Device = x;
+        y
+      }))
+      .chain(self.flatten_sensors().into_iter().map(|x| {
+        let y: &dyn Device = x;
+        y
+      }))
+      .collect()
+  }
 }
 
 pub trait Searchable {
   fn find_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight>;
   fn find_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight>;
-}
-
-impl<T: Addressable + LightCollection + EffectiveLight> Searchable for T {
-  fn find_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight> {
-    if &self.topic(topic.mode()) == topic {
-      return Some(self);
-    }
-    self.flatten_lights().into_iter().find(|l| &l.topic(topic.mode()) == topic).map(|l| {
-      let x: &dyn EffectiveLight = l;
-      x
-    })
-  }
-
-  fn find_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight> {
-    if &self.topic(topic.mode()) == topic {
-      return Some(self);
-    }
-    self.flatten_lights_mut().into_iter().find(|l| &l.topic(topic.mode()) == topic).map(|l| {
-      let x: &mut dyn EffectiveLight = l;
-      x
-    })
-  }
+  fn find_sensor(&self, topic: &Topic) -> Option<&Sensor>;
+  fn find_sensor_mut(&mut self, topic: &Topic) -> Option<&mut Sensor>;
+  fn find_remote(&self, topic: &Topic) -> Option<&Remote>;
+  fn find_remote_mut(&mut self, topic: &Topic) -> Option<&mut Remote>;
 }
 
 impl<T: LightCollection> EffectiveLight for T {
-  fn turn_on(&mut self) -> Option<MqttPayload> {
-    todo!()
+  fn turn_on(&mut self) -> Vec<(Topic, MqttPayload)> {
+    self.flatten_lights_mut().into_iter().flat_map(|l| l.turn_on()).collect()
   }
 
-  fn turn_off(&mut self) -> Option<MqttPayload> {
-    todo!()
+  fn turn_off(&mut self) -> Vec<(Topic, MqttPayload)> {
+    self.flatten_lights_mut().into_iter().flat_map(|l| l.turn_off()).collect()
   }
 
-  fn toggle(&mut self) -> Option<MqttPayload> {
-    todo!()
+  fn toggle(&mut self) -> Vec<(Topic, MqttPayload)> {
+    self.flatten_lights_mut().into_iter().flat_map(|l| l.toggle()).collect()
   }
 
-  fn dim_down(&mut self) -> Option<MqttPayload> {
-    todo!()
+  fn dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
+    self.flatten_lights_mut().into_iter().flat_map(|l| l.dim_down()).collect()
   }
 
-  fn dim_up(&mut self) -> Option<MqttPayload> {
-    todo!()
+  fn dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
+    self.flatten_lights_mut().into_iter().flat_map(|l| l.dim_up()).collect()
   }
 
-  fn start_dim_down(&mut self) -> Option<MqttPayload> {
-    todo!()
+  fn start_dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
+    self.flatten_lights_mut().into_iter().flat_map(|l| l.start_dim_down()).collect()
   }
 
-  fn start_dim_up(&mut self) -> Option<MqttPayload> {
-    todo!()
+  fn start_dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
+    self.flatten_lights_mut().into_iter().flat_map(|l| l.start_dim_up()).collect()
   }
 
-  fn stop_dim(&mut self) -> Option<MqttPayload> {
-    todo!()
+  fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)> {
+    self.flatten_lights_mut().into_iter().flat_map(|l| l.stop_dim()).collect()
   }
 }
 
@@ -86,37 +122,18 @@ pub trait ReadWriteHome {
 }
 
 pub trait EffectiveLight {
-  fn turn_on(&mut self) -> Option<MqttPayload>;
-  fn turn_off(&mut self) -> Option<MqttPayload>;
-  fn toggle(&mut self) -> Option<MqttPayload>;
-  fn dim_down(&mut self) -> Option<MqttPayload>;
-  fn dim_up(&mut self) -> Option<MqttPayload>;
-  fn start_dim_down(&mut self) -> Option<MqttPayload>;
-  fn start_dim_up(&mut self) -> Option<MqttPayload>;
-  fn stop_dim(&mut self) -> Option<MqttPayload>;
+  fn turn_on(&mut self)         -> Vec<(Topic, MqttPayload)>;
+  fn turn_off(&mut self)        -> Vec<(Topic, MqttPayload)>;
+  fn toggle(&mut self)          -> Vec<(Topic, MqttPayload)>;
+  fn dim_down(&mut self)        -> Vec<(Topic, MqttPayload)>;
+  fn dim_up(&mut self)          -> Vec<(Topic, MqttPayload)>;
+  fn start_dim_down(&mut self)  -> Vec<(Topic, MqttPayload)>;
+  fn start_dim_up(&mut self)    -> Vec<(Topic, MqttPayload)>;
+  fn stop_dim(&mut self)        -> Vec<(Topic, MqttPayload)>;
 }
 
 pub trait Addressable {
   fn topic(&self, mode: TopicMode) -> Topic;
-}
-
-pub trait DeviceTrait: Addressable {
-  fn kind(&self) -> DeviceKind;
-  fn model(&self) -> DeviceModel;
-  fn name(&self) -> &str;
-  fn room(&self) -> &str;
-}
-
-impl<T: DeviceTrait> Addressable for T {
-  fn topic(&self, mode: TopicMode) -> Topic {
-    Topic::Device {
-      device: self.kind(),
-      room: self.room().to_string(),
-      groups: vec![],
-      name: self.name().to_string(),
-      mode,
-    }
-  }
 }
 
 pub trait JsonConvertible: Sized {

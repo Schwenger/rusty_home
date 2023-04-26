@@ -27,7 +27,7 @@ impl JsonPayload {
 pub struct MqttPayload(SerdeValue);
 
 impl MqttPayload {
-  const TRANSITION: u32 = 50;
+  const TRANSITION: u32 = 5;
   const DIM_SPEED: u32 = 40;
 
   pub fn new() -> Self {

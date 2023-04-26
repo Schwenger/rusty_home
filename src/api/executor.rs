@@ -37,6 +37,7 @@ impl ExecutorLogic {
       Request::LightCommand(lc) => self.execute_light(lc).await,
       Request::HomeEdit(he) => self.edit_home(he).await,
       Request::General(general) => self.execute_general(general).await,
+      Request::RemoteAction(ra) => self.remote_action(ra).await,
     }
   }
 }

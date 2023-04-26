@@ -5,10 +5,13 @@ use serde::{Deserialize, Serialize};
 use crate::{
   api::{
     payload::JsonPayload,
-    traits::{Addressable, EditableHome, LightCollection, QueryableHome, ReadWriteHome},
+    traits::{
+      Addressable, EditableHome, EffectiveLight, LightCollection, QueryableHome, ReadWriteHome,
+      RemoteCollection, SensorCollection,
+    },
     Topic, TopicMode,
   },
-  devices::Light,
+  devices::{Light, Remote},
   Result,
 };
 
@@ -35,6 +38,40 @@ impl LightCollection for Home {
 
   fn flatten_lights_mut(&mut self) -> Vec<&mut Light> {
     self.rooms.iter_mut().flat_map(|r| r.flatten_lights_mut()).collect()
+  }
+
+  fn find_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight> {
+    if &self.topic(topic.mode()) == topic {
+      return Some(self);
+    }
+    self.rooms.iter().flat_map(|r| r.find_light(topic)).last()
+  }
+
+  fn find_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight> {
+    if &self.topic(topic.mode()) == topic {
+      return Some(self);
+    }
+    self.rooms.iter_mut().flat_map(|r| r.find_light_mut(topic)).last()
+  }
+}
+
+impl RemoteCollection for Home {
+  fn flatten_remotes(&self) -> Vec<&Remote> {
+    self.rooms.iter().flat_map(Room::flatten_remotes).collect()
+  }
+
+  fn flatten_remotes_mut(&mut self) -> Vec<&mut Remote> {
+    self.rooms.iter_mut().flat_map(|r| r.flatten_remotes_mut()).collect()
+  }
+}
+
+impl SensorCollection for Home {
+  fn flatten_sensors(&self) -> Vec<&crate::devices::Sensor> {
+    self.rooms.iter().flat_map(Room::flatten_sensors).collect()
+  }
+
+  fn flatten_sensors_mut(&mut self) -> Vec<&mut crate::devices::Sensor> {
+    self.rooms.iter_mut().flat_map(|r| r.flatten_sensors_mut()).collect()
   }
 }
 
