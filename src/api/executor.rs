@@ -1,12 +1,6 @@
-
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::{
-  api::Request,
-  home::Home,
-  mqtt::ProtectedClient,
-  Result,
-};
+use crate::{api::Request, home::Home, mqtt::ProtectedClient, Result};
 
 #[allow(missing_debug_implementations)]
 pub struct Executor {
@@ -15,11 +9,7 @@ pub struct Executor {
 }
 
 impl Executor {
-  pub fn new(
-    requests: UnboundedReceiver<Request>,
-    client: ProtectedClient,
-    home: Home,
-  ) -> Self {
+  pub fn new(requests: UnboundedReceiver<Request>, client: ProtectedClient, home: Home) -> Self {
     let inner = ExecutorLogic { client, home };
     Executor { requests, inner }
   }

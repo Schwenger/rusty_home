@@ -6,7 +6,7 @@ use serde_json::Value as SerdeValue;
 
 use crate::Scalar;
 
-use super::JsonConvertible;
+use super::traits::JsonConvertible;
 
 #[derive(Debug, Clone)]
 pub struct JsonPayload(String);
@@ -28,6 +28,7 @@ pub struct MqttPayload(SerdeValue);
 
 impl MqttPayload {
   const TRANSITION: u32 = 50;
+  const DIM_SPEED: u32 = 40;
 
   pub fn new() -> Self {
     Self(json!({}))
@@ -63,6 +64,17 @@ impl MqttPayload {
 
   fn with_brightness(mut self, val: SerdeValue) -> Self {
     self.insert("brightness", val);
+    self
+  }
+
+  pub fn with_start_dimming(mut self, up: bool) -> Self {
+    let f = if up { 1 } else { -1 };
+    self.insert("brightness_move", json!(f * (Self::DIM_SPEED as i64)));
+    self
+  }
+
+  pub fn with_stop_dimming(mut self) -> Self {
+    self.insert("brightness_move", json!(0));
     self
   }
 

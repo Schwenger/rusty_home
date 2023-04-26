@@ -1,7 +1,9 @@
 use lazy_static::lazy_static;
-use regex::{Regex, Captures};
+use regex::{Captures, Regex};
 
-use crate::{api::TopicConvertible, Error, Result};
+use crate::{Error, Result};
+
+use super::traits::TopicConvertible;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum DeviceKind {
@@ -148,38 +150,38 @@ impl Topic {
     self.components().join(Self::SEPARATOR)
   }
 
-  const REGEX_HOME:   &str = r"^zigbee2mqtt/Home(?:/(P?<mode>set|get))?$";
+  const REGEX_HOME: &str = r"^zigbee2mqtt/Home(?:/(P?<mode>set|get))?$";
   const REGEX_BRIDGE: &str = r"^zigbee2mqtt/bridge/event$";
-  const REGEX_ROOM:   &str = r"^zigbee2mqtt/Room/(?P<name>(?:\w| )+)(?:/(?P<mode>set|get))?$";
-  const REGEX_GROUP:  &str = r"^zigbee2mqtt/Group/(?P<room>(?:\w| )+)(?:/(?:\w| )+)*?/(?P<name>(?:\w| )+)(?:/(?P<mode>set|get))?$";
+  const REGEX_ROOM: &str = r"^zigbee2mqtt/Room/(?P<name>(?:\w| )+)(?:/(?P<mode>set|get))?$";
+  const REGEX_GROUP: &str = r"^zigbee2mqtt/Group/(?P<room>(?:\w| )+)(?:/(?:\w| )+)*?/(?P<name>(?:\w| )+)(?:/(?P<mode>set|get))?$";
   const REGEX_DEVICE: &str = r"^zigbee2mqtt/Device/(?P<kind>(?:\w| )+)/(?P<room>(?:\w| )+)(?:/(?:\w| )+)*?/(?P<name>(?:\w| )+)(?:/(?P<mode>set|get))?$";
 
   pub fn try_from(value: String) -> Result<Self> {
     lazy_static! {
-      static ref RE_HOME:   Regex = Regex::new(Topic::REGEX_HOME).unwrap();
+      static ref RE_HOME: Regex = Regex::new(Topic::REGEX_HOME).unwrap();
       static ref RE_BRIDGE: Regex = Regex::new(Topic::REGEX_BRIDGE).unwrap();
-      static ref RE_ROOM:   Regex = Regex::new(Topic::REGEX_ROOM  ).unwrap();
-      static ref RE_GROUP:  Regex = Regex::new(Topic::REGEX_GROUP ).unwrap();
+      static ref RE_ROOM: Regex = Regex::new(Topic::REGEX_ROOM).unwrap();
+      static ref RE_GROUP: Regex = Regex::new(Topic::REGEX_GROUP).unwrap();
       static ref RE_DEVICE: Regex = Regex::new(Topic::REGEX_DEVICE).unwrap();
     }
     if let Some(captures) = RE_HOME.captures(&value) {
       let mode = Self::read_mode(&captures);
-      return Ok(Topic::Home { mode })
+      return Ok(Topic::Home { mode });
     }
     if RE_BRIDGE.is_match(&value) {
-      return Ok(Topic::Bridge)
+      return Ok(Topic::Bridge);
     }
     if let Some(captures) = RE_ROOM.captures(&value) {
       let name = captures.name("name").unwrap().as_str().to_string();
       let mode = Self::read_mode(&captures);
-      return Ok(Topic::Room { name, mode })
+      return Ok(Topic::Room { name, mode });
     }
     if let Some(captures) = RE_GROUP.captures(&value) {
       let room = captures.name("room").unwrap().as_str().to_string();
       let name = captures.name("name").unwrap().as_str().to_string();
       let mode = Self::read_mode(&captures);
       let groups = Self::read_groups(&value, mode, 3).into_iter().map(String::from).collect();
-      return Ok(Topic::Group { room, groups, name, mode })
+      return Ok(Topic::Group { room, groups, name, mode });
     }
     if let Some(captures) = RE_DEVICE.captures(&value) {
       let room = captures.name("room").unwrap().as_str().to_string();
@@ -187,13 +189,17 @@ impl Topic {
       let mode = Self::read_mode(&captures);
       let name = captures.name("name").unwrap().as_str().to_string();
       let groups = Self::read_groups(&value, mode, 4).into_iter().map(String::from).collect();
-      return Ok(Topic::Device { device, room, groups, name, mode })
+      return Ok(Topic::Device { device, room, groups, name, mode });
     }
     Err(Error::InvalidTopic)
   }
 
   fn read_mode(cap: &Captures) -> TopicMode {
-    cap.name("mode").map(|m| m.as_str()).map(|m| TopicMode::from_str(m).unwrap()).unwrap_or(TopicMode::Blank)
+    cap
+      .name("mode")
+      .map(|m| m.as_str())
+      .map(|m| TopicMode::from_str(m).unwrap())
+      .unwrap_or(TopicMode::Blank)
   }
 
   fn read_groups(topic: &str, mode: TopicMode, skip: usize) -> Vec<&str> {

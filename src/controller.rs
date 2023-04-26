@@ -1,11 +1,11 @@
 use std::thread::sleep;
 use std::time::Duration;
 
-use crate::api::{Request, General};
+use crate::api::{traits::ReadWriteHome, General, Request};
 use crate::home::Home;
 use crate::web_server::WebServer;
-use tokio::{join, select, pin};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use tokio::{join, pin, select};
 
 use crate::{
   api::Executor,
@@ -23,8 +23,8 @@ pub struct Controller {
 
 impl Controller {
   pub async fn new(config: GlobalConfig) -> Result<Self, Error> {
-    let (client, mqtt_receiver) =  Self::setup_client(&config).await?;
-    let home = Home::from(&config);
+    let (client, mqtt_receiver) = Self::setup_client(&config).await?;
+    let home = Home::read(&config.home.dir);
     let (q_send, q_recv) = unbounded_channel(); // Distribute send more liberally.
     let executor = Executor::new(q_recv, client, home);
     let web_server = WebServer::new(q_send.clone());

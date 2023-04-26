@@ -1,7 +1,7 @@
-use std::{thread, time::Duration, sync::Arc};
+use std::{sync::Arc, thread, time::Duration};
 
 use crate::{
-  api::{JsonConvertible, MqttPayload, Topic, TopicMode},
+  api::{payload::MqttPayload, traits::JsonConvertible, Topic, TopicMode},
   Result,
 };
 use paho_mqtt::{AsyncClient, AsyncReceiver, CreateOptionsBuilder, Message, QOS_1};
@@ -39,7 +39,7 @@ impl MqttReceiver {
     loop {
       let msg = self.stream.recv().await;
       match msg {
-        Ok(None) | Err(_) => { } //self.client.lock().await.attempt_reconnect().await,
+        Ok(None) | Err(_) => {} //self.client.lock().await.attempt_reconnect().await,
         Ok(Some(msg)) => self.client.lock().await.handle_message(msg).await,
       }
     }

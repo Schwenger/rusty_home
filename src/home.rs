@@ -3,8 +3,12 @@ use std::fs::File;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  api::{Editable, JsonPayload, Queryable},
-  config::GlobalConfig,
+  api::{
+    payload::JsonPayload,
+    traits::{Addressable, EditableHome, LightCollection, QueryableHome, ReadWriteHome},
+    Topic, TopicMode,
+  },
+  devices::Light,
   Result,
 };
 
@@ -18,16 +22,30 @@ pub struct Home {
   rooms: Vec<Room>,
 }
 
-impl From<&GlobalConfig> for Home {
-  fn from(cfg: &GlobalConfig) -> Self {
-    let content = std::fs::read_to_string(&cfg.home.dir).expect("Cannot open file.");
-    let home: Home = serde_yaml::from_str(&content).expect("Cannot read home.");
-    home
+impl Addressable for Home {
+  fn topic(&self, mode: TopicMode) -> Topic {
+    Topic::Home { mode }
   }
 }
 
-impl Home {
-  pub fn persist(&self, to: &str) -> Result<()> {
+impl LightCollection for Home {
+  fn flatten_lights(&self) -> Vec<&Light> {
+    self.rooms.iter().flat_map(Room::flatten_lights).collect()
+  }
+
+  fn flatten_lights_mut(&mut self) -> Vec<&mut Light> {
+    self.rooms.iter_mut().flat_map(|r| r.flatten_lights_mut()).collect()
+  }
+}
+
+impl ReadWriteHome for Home {
+  fn read(from: &str) -> Self {
+    let content = std::fs::read_to_string(from).expect("Cannot open file.");
+    let home: Home = serde_yaml::from_str(&content).expect("Cannot read home.");
+    home
+  }
+
+  fn persist(&self, to: &str) -> Result<()> {
     let mut path = to.to_string();
     path.push_str(".out");
     serde_yaml::to_writer(&File::create(path)?, self)?;
@@ -35,20 +53,18 @@ impl Home {
   }
 }
 
-impl Editable for Home {
+impl EditableHome for Home {
   fn add_room(&mut self, name: String) {
     self.rooms.push(Room::new(name))
   }
 }
 
-impl Queryable for Home {
-  type Output = JsonPayload;
-
-  fn query_architecture(&self) -> Self::Output {
+impl QueryableHome for Home {
+  fn query_architecture(&self) -> JsonPayload {
     JsonPayload::from(self)
   }
 
-  fn query_device(&self, _topic: crate::api::Topic) -> Self::Output {
+  fn query_device(&self, _topic: Topic) -> JsonPayload {
     todo!()
   }
 }

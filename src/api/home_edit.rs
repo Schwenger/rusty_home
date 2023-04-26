@@ -1,4 +1,4 @@
-use crate::api::Editable;
+use crate::api::traits::EditableHome;
 
 use super::ExecutorLogic;
 

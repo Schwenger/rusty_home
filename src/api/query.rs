@@ -1,4 +1,4 @@
-use super::{ExecutorLogic, Queryable, JsonPayload};
+use super::{payload::JsonPayload, traits::QueryableHome, ExecutorLogic};
 use tokio::sync::oneshot::Sender;
 
 #[derive(Debug, Clone, Copy)]

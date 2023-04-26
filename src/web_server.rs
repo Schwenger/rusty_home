@@ -1,14 +1,12 @@
-
+use hyper::service::{make_service_fn, service_fn};
+use hyper::{Body, Method, Request as HyperRequest, Response, Server, StatusCode};
 use std::convert::Infallible;
 use std::net::SocketAddr;
-use hyper::{Body, Request as HyperRequest, Response, Server, Method, StatusCode};
-use hyper::service::{make_service_fn, service_fn};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 
+use crate::api::{Query, Request};
 use crate::Result;
-use crate::api::{Request, Query};
-
 
 #[derive(Debug)]
 pub struct WebServer {
@@ -27,9 +25,7 @@ impl WebServer {
     let addr = SocketAddr::from(([127, 0, 0, 1], 8088));
     let make_svc = make_service_fn(move |_conn| {
       let clone = queue.clone();
-      async move {
-        Ok::<_, Infallible>(service_fn(move |req| Self::process(req, clone.clone())))
-      }
+      async move { Ok::<_, Infallible>(service_fn(move |req| Self::process(req, clone.clone()))) }
     });
     let server = Server::bind(&addr).serve(make_svc);
     println!("Server started.");
@@ -39,7 +35,10 @@ impl WebServer {
     unreachable!()
   }
 
-  async fn process(req: HyperRequest<Body>, queue: UnboundedSender<Request>) -> std::result::Result<Response<Body>, Infallible> {
+  async fn process(
+    req: HyperRequest<Body>,
+    queue: UnboundedSender<Request>,
+  ) -> std::result::Result<Response<Body>, Infallible> {
     println!("Processing request");
     let mut response = Response::new(Body::empty());
     match (req.method(), req.uri().path()) {
@@ -49,14 +48,13 @@ impl WebServer {
         queue.send(Request::Query(Query::Architecture, sender)).unwrap();
         let resp = receiver.await.unwrap();
         *response.body_mut() = Body::from(resp.to_str());
-      },
+      }
       (&Method::POST, _) => panic!("Received post request"),
       _ => {
-          *response.status_mut() = StatusCode::NOT_FOUND;
-          *response.body_mut() = Body::from("Unknown page.");
-      },
+        *response.status_mut() = StatusCode::NOT_FOUND;
+        *response.body_mut() = Body::from("Unknown page.");
+      }
     };
     Ok(response)
   }
-
 }
