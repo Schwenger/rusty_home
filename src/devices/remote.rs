@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use light_command::LightCommand;
 use serde::{Deserialize, Serialize};
 
 use crate::api::{
@@ -67,7 +68,7 @@ pub struct Remote {
   icon: String,
   controls: String,
   room: String,
-  actions: HashMap<RemoteButton, light_command::Command>, // ToDo: Map to Api Command.
+  actions: HashMap<RemoteButton, LightCommand>, // ToDo: Map to Api Command.
 }
 
 impl Device for Remote {
@@ -89,7 +90,7 @@ impl Device for Remote {
 }
 
 impl Remote {
-  pub fn action(&self, button: RemoteButton) -> Option<light_command::Command> {
+  pub fn action(&self, button: RemoteButton) -> Option<LightCommand> {
     self.actions.get(&button).copied()
   }
 

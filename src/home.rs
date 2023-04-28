@@ -51,7 +51,7 @@ impl LightCollection for Home {
     if &self.topic(topic.mode()) == topic {
       return Some(self);
     }
-    self.rooms.iter_mut().flat_map(|r| r.find_light_mut(topic)).last()
+    self.rooms.iter_mut().find_map(|r| r.find_light_mut(topic))
   }
 }
 

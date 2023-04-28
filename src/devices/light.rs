@@ -1,9 +1,12 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::api::payload::MqttPayload;
 use crate::api::topic::{DeviceKind, Topic, TopicMode};
 use crate::api::traits::{Addressable, EffectiveLight, LightCollection};
 use crate::common::Scalar;
+use crate::error::HomeBaseError;
+use crate::Result;
 
 use super::{Device, DeviceModel};
 
@@ -13,14 +16,16 @@ pub struct Light {
   model: DeviceModel,
   icon: String,
   room: String,
+  pseudo_kind: Option<DeviceKind>,
   #[serde(skip)]
-  on: bool,
-  #[serde(skip)]
-  brightness: Scalar,
+  state: LightState,
 }
 
 impl Device for Light {
   fn kind(&self) -> DeviceKind {
+    if let Some(k) = self.pseudo_kind {
+      return k;
+    }
     self.model.kind()
   }
 
@@ -39,29 +44,29 @@ impl Device for Light {
 
 impl EffectiveLight for Light {
   fn turn_on(&mut self) -> Vec<(Topic, MqttPayload)> {
-    if self.on {
+    if self.state.on {
       return vec![];
     }
-    self.on = true;
+    self.state.on = true;
     vec![(
       self.topic(TopicMode::Set),
-      MqttPayload::new().with_state_change(self.on).with_transition(),
+      MqttPayload::new().with_state_change(self.state.on).with_transition(),
     )]
   }
 
   fn turn_off(&mut self) -> Vec<(Topic, MqttPayload)> {
-    if !self.on {
+    if !self.state.on {
       return vec![];
     }
-    self.on = false;
+    self.state.on = false;
     vec![(
       self.topic(TopicMode::Set),
-      MqttPayload::new().with_state_change(self.on).with_transition(),
+      MqttPayload::new().with_state_change(self.state.on).with_transition(),
     )]
   }
 
   fn toggle(&mut self) -> Vec<(Topic, MqttPayload)> {
-    if self.on {
+    if self.state.on {
       self.turn_off()
     } else {
       self.turn_on()
@@ -69,18 +74,18 @@ impl EffectiveLight for Light {
   }
 
   fn dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
-    self.brightness -= 0.2;
+    self.state.brightness -= 0.2;
     vec![(
       self.topic(TopicMode::Set),
-      MqttPayload::new().with_brightness_change(self.brightness).with_transition(),
+      MqttPayload::new().with_brightness_change(self.state.brightness).with_transition(),
     )]
   }
 
   fn dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
-    self.brightness += 0.2;
+    self.state.brightness += 0.2;
     vec![(
       self.topic(TopicMode::Set),
-      MqttPayload::new().with_brightness_change(self.brightness).with_transition(),
+      MqttPayload::new().with_brightness_change(self.state.brightness).with_transition(),
     )]
   }
 
@@ -101,6 +106,10 @@ impl EffectiveLight for Light {
   fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)> {
     // ToDo: Query state to keep internal brightness up to date.
     vec![(self.topic(TopicMode::Set), MqttPayload::new().with_stop_dimming().with_transition())]
+  }
+
+  fn update_state(&mut self, state: LightState) {
+    self.state = state;
   }
 }
 
@@ -152,6 +161,33 @@ impl LightCollection for LightGroup {
     if let Some(res) = self.atomics.iter_mut().find(|l| &l.topic(topic.mode()) == topic) {
       return Some(res);
     }
-    self.subgroups.iter_mut().flat_map(|grp| grp.find_light_mut(topic)).last()
+    self.subgroups.iter_mut().find_map(|grp| grp.find_light_mut(topic))
+  }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+pub struct LightState {
+  pub on: bool,
+  pub brightness: Scalar,
+}
+
+impl Default for LightState {
+  fn default() -> Self {
+    Self { on: false, brightness: 1.0.into() }
+  }
+}
+
+impl LightState {
+  pub fn from_payload(value: Value, model: DeviceModel) -> Result<Self> {
+    if value.get("state").is_none() {
+      return Err(HomeBaseError::InvalidLightState);
+    }
+    let on = value.get("state").unwrap() == "ON";
+    let brightness = value
+      .get("brightness")
+      .and_then(Value::as_i64)
+      .map(|v| MqttPayload::read_brightness_scalar(model, v))
+      .unwrap_or(1.0.into());
+    Ok(LightState { on, brightness })
   }
 }

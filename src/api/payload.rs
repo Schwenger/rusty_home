@@ -1,3 +1,4 @@
+use crate::devices::DeviceModel;
 use crate::Error;
 use crate::Result;
 use serde::{Deserialize, Serialize};
@@ -96,5 +97,16 @@ impl JsonConvertible for MqttPayload {
 
   fn from_str(string: &str) -> Result<Self> {
     serde_json::from_str(string).map_err(|_| Error::UnexpectedMqttPayload)
+  }
+}
+
+impl MqttPayload {
+  pub fn read_brightness_scalar(model: DeviceModel, brightness: i64) -> Scalar {
+    let max = match model.vendor() {
+      crate::devices::Vendor::Ikea => 254.0,
+      crate::devices::Vendor::Philips => 254.0,
+      crate::devices::Vendor::Tuya => unreachable!(),
+    };
+    (brightness as f64 / max).into()
   }
 }

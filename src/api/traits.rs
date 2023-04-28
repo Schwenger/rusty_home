@@ -1,4 +1,7 @@
+use core::fmt::Debug;
+
 use crate::api::topic::Topic;
+use crate::devices::light::LightState;
 use crate::devices::{Device, Light, Remote, Sensor};
 use crate::Result;
 
@@ -10,11 +13,17 @@ pub trait QueryableHome {
   fn query_device(&self, topic: Topic) -> JsonPayload;
 }
 
-pub trait LightCollection {
+pub trait LightCollection: Debug {
   fn flatten_lights(&self) -> Vec<&Light>;
   fn flatten_lights_mut(&mut self) -> Vec<&mut Light>;
   fn find_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight>;
   fn find_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight>;
+  fn find_physical_light(&self, topic: &Topic) -> Option<&Light> {
+    self.flatten_lights().into_iter().find(|l| &l.topic(topic.mode()) == topic)
+  }
+  fn find_physical_light_mut(&mut self, topic: &Topic) -> Option<&mut Light> {
+    self.flatten_lights_mut().into_iter().find(|l| &l.topic(topic.mode()) == topic)
+  }
 }
 
 pub trait RemoteCollection {
@@ -69,15 +78,6 @@ where
   }
 }
 
-pub trait Searchable {
-  fn find_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight>;
-  fn find_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight>;
-  fn find_sensor(&self, topic: &Topic) -> Option<&Sensor>;
-  fn find_sensor_mut(&mut self, topic: &Topic) -> Option<&mut Sensor>;
-  fn find_remote(&self, topic: &Topic) -> Option<&Remote>;
-  fn find_remote_mut(&mut self, topic: &Topic) -> Option<&mut Remote>;
-}
-
 impl<T: LightCollection> EffectiveLight for T {
   fn turn_on(&mut self) -> Vec<(Topic, MqttPayload)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.turn_on()).collect()
@@ -110,6 +110,10 @@ impl<T: LightCollection> EffectiveLight for T {
   fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.stop_dim()).collect()
   }
+
+  fn update_state(&mut self, state: LightState) {
+    self.flatten_lights_mut().into_iter().for_each(|l| l.update_state(state))
+  }
 }
 
 pub trait EditableHome {
@@ -121,7 +125,7 @@ pub trait ReadWriteHome {
   fn persist(&self, to: &str) -> Result<()>;
 }
 
-pub trait EffectiveLight {
+pub trait EffectiveLight: Debug {
   fn turn_on(&mut self) -> Vec<(Topic, MqttPayload)>;
   fn turn_off(&mut self) -> Vec<(Topic, MqttPayload)>;
   fn toggle(&mut self) -> Vec<(Topic, MqttPayload)>;
@@ -130,6 +134,7 @@ pub trait EffectiveLight {
   fn start_dim_down(&mut self) -> Vec<(Topic, MqttPayload)>;
   fn start_dim_up(&mut self) -> Vec<(Topic, MqttPayload)>;
   fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)>;
+  fn update_state(&mut self, state: LightState);
 }
 
 pub trait Addressable {

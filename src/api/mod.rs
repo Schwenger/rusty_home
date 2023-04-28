@@ -8,6 +8,7 @@ pub mod remote;
 mod request;
 pub mod topic;
 pub mod traits;
+pub mod update;
 
 pub use executor::{Executor, ExecutorLogic};
 pub use general::General;

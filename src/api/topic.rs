@@ -1,11 +1,12 @@
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
+use serde::{Deserialize, Serialize};
 
 use crate::{Error, Result};
 
 use super::traits::TopicConvertible;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum DeviceKind {
   Light,
   Sensor,
@@ -103,6 +104,13 @@ impl Topic {
       Topic::Room { .. } => TopicKind::Room,
       Topic::Group { .. } => TopicKind::Group,
       Topic::Device { .. } => TopicKind::Device,
+    }
+  }
+
+  pub fn device(&self) -> Option<DeviceKind> {
+    match self {
+      Topic::Home { .. } | Topic::Bridge | Topic::Room { .. } | Topic::Group { .. } => None,
+      Topic::Device { device, .. } => Some(*device),
     }
   }
 

@@ -9,6 +9,7 @@ pub enum HomeBaseError {
   ImpossibleStrConversion,
   InvalidTopic,
   UnexpectedMqttPayload,
+  InvalidLightState,
   // HomeEdit(crate:::api::HomeEditError),
 }
 

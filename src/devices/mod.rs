@@ -42,7 +42,7 @@ pub enum DeviceModel {
 }
 
 impl DeviceModel {
-  fn kind(&self) -> DeviceKind {
+  pub fn kind(&self) -> DeviceKind {
     match self {
       DeviceModel::TuyaHumidity => DeviceKind::Sensor,
       DeviceModel::IkeaOutlet => DeviceKind::Outlet,
@@ -52,4 +52,22 @@ impl DeviceModel {
       DeviceModel::IkeaDimmer => DeviceKind::Light,
     }
   }
+
+  pub fn vendor(&self) -> Vendor {
+    match self {
+      DeviceModel::TuyaHumidity => Vendor::Tuya,
+      DeviceModel::IkeaOutlet
+      | DeviceModel::IkeaDimmable
+      | DeviceModel::IkeaMultiButton
+      | DeviceModel::IkeaDimmer => Vendor::Ikea,
+      DeviceModel::HueColor => Vendor::Philips,
+    }
+  }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum Vendor {
+  Ikea,
+  Philips,
+  Tuya,
 }

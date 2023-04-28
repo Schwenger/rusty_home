@@ -34,10 +34,11 @@ impl ExecutorLogic {
   async fn process(&mut self, req: Request) {
     match req {
       Request::Query(query, resp) => self.respond(query, resp).await,
-      Request::LightCommand(lc) => self.execute_light(lc).await,
+      Request::LightCommand(cmd, target) => self.execute_light(cmd, target).await,
       Request::HomeEdit(he) => self.edit_home(he).await,
       Request::General(general) => self.execute_general(general).await,
       Request::RemoteAction(ra) => self.remote_action(ra).await,
+      Request::Update(update, topic) => self.update(topic, update).await,
     }
   }
 }

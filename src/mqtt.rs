@@ -72,18 +72,25 @@ impl MqttClient {
   }
 
   async fn handle_message(&self, msg: Message) {
-    // println!("Handling a message. {msg}");
+    println!("Handling a message. {msg}\n");
     let target = msg.topic();
     let target = Topic::try_from(target.to_string()).unwrap();
     let payload: Value = serde_json::from_str(msg.payload_str().borrow()).unwrap();
-    // println!("Payload: {}", payload);
-    // println!("Action: {:?}", payload.get("action"));
-    if let Some(action) = payload.get("action") {
-      // println!("Parsed: {:?}", serde_json::from_value::<IkeaDimmer>(action.clone()));
+    if target.kind() == TopicKind::Bridge {
+      println!("Received bridge event.  Ignored.")
+    } else if let Some(action) = payload.get("action") {
+      println!(
+        "Received remote action: {:?}",
+        serde_json::from_value::<IkeaDimmer>(action.clone())
+      );
       if let Ok(dimmer) = serde_json::from_value::<IkeaDimmer>(action.clone()) {
         let ra = RemoteAction { button: RemoteButton::IkeaDimmer(dimmer), target };
         self.queue.send(Request::RemoteAction(ra)).unwrap();
       }
+    } else if target.device().is_some() {
+      println!("Received update");
+      let req = Request::Update(payload, target);
+      self.queue.send(req).expect("Error handling.");
     }
   }
 
