@@ -2,7 +2,12 @@ use std::{borrow::Borrow, sync::Arc, thread, time::Duration};
 
 use crate::{
   api::{
-    payload::MqttPayload, remote::RemoteAction, traits::JsonConvertible, Request, Topic, TopicMode,
+    payload::MqttPayload,
+    remote::RemoteAction,
+    topic::TopicKind,
+    topic::{Topic, TopicMode},
+    traits::JsonConvertible,
+    Request,
   },
   devices::remote::{IkeaDimmer, RemoteButton},
   Result,

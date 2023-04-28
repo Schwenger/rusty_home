@@ -1,8 +1,8 @@
 use std::thread::sleep;
 use std::time::Duration;
 
+use crate::api::topic::TopicMode;
 use crate::api::traits::DeviceCollection;
-use crate::api::TopicMode;
 use crate::api::{traits::ReadWriteHome, General, Request};
 use crate::home::Home;
 use crate::web_server::WebServer;

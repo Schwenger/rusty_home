@@ -122,7 +122,9 @@ impl Topic {
       Topic::Bridge => Topic::Bridge,
       Topic::Room { mode: _, name } => Topic::Room { mode, name },
       Topic::Group { mode: _, room, groups, name } => Topic::Group { room, groups, name, mode },
-      Topic::Device { mode: _, device, room, groups, name } => Topic::Device { device, room, groups, name, mode },
+      Topic::Device { mode: _, device, room, groups, name } => {
+        Topic::Device { device, room, groups, name, mode }
+      }
     }
   }
 
@@ -225,7 +227,7 @@ impl Topic {
 #[cfg(test)]
 mod test {
 
-  use crate::api::DeviceKind;
+  use crate::api::topic::DeviceKind;
 
   use super::{Topic, TopicMode};
 

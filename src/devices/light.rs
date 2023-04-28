@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::api::payload::MqttPayload;
+use crate::api::topic::{DeviceKind, Topic, TopicMode};
 use crate::api::traits::{Addressable, EffectiveLight, LightCollection};
-use crate::api::{DeviceKind, Topic, TopicMode};
 use crate::common::Scalar;
 
 use super::{Device, DeviceModel};
@@ -43,7 +43,10 @@ impl EffectiveLight for Light {
       return vec![];
     }
     self.on = true;
-    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_state_change(self.on).with_transition())]
+    vec![(
+      self.topic(TopicMode::Set),
+      MqttPayload::new().with_state_change(self.on).with_transition(),
+    )]
   }
 
   fn turn_off(&mut self) -> Vec<(Topic, MqttPayload)> {
@@ -51,7 +54,10 @@ impl EffectiveLight for Light {
       return vec![];
     }
     self.on = false;
-    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_state_change(self.on).with_transition())]
+    vec![(
+      self.topic(TopicMode::Set),
+      MqttPayload::new().with_state_change(self.on).with_transition(),
+    )]
   }
 
   fn toggle(&mut self) -> Vec<(Topic, MqttPayload)> {
@@ -64,20 +70,32 @@ impl EffectiveLight for Light {
 
   fn dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
     self.brightness -= 0.2;
-    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_brightness_change(self.brightness).with_transition())]
+    vec![(
+      self.topic(TopicMode::Set),
+      MqttPayload::new().with_brightness_change(self.brightness).with_transition(),
+    )]
   }
 
   fn dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
     self.brightness += 0.2;
-    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_brightness_change(self.brightness).with_transition())]
+    vec![(
+      self.topic(TopicMode::Set),
+      MqttPayload::new().with_brightness_change(self.brightness).with_transition(),
+    )]
   }
 
   fn start_dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
-    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_start_dimming(false).with_transition())]
+    vec![(
+      self.topic(TopicMode::Set),
+      MqttPayload::new().with_start_dimming(false).with_transition(),
+    )]
   }
 
   fn start_dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
-    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_start_dimming(true).with_transition())]
+    vec![(
+      self.topic(TopicMode::Set),
+      MqttPayload::new().with_start_dimming(true).with_transition(),
+    )]
   }
 
   fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)> {

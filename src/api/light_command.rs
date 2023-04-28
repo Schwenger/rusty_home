@@ -1,9 +1,9 @@
-use futures::{StreamExt, stream};
+use futures::{stream, StreamExt};
 use serde::{Deserialize, Serialize};
 
 use crate::api::traits::LightCollection;
 
-use super::{ExecutorLogic, Topic};
+use super::{topic::Topic, ExecutorLogic};
 
 #[derive(Debug, Clone)]
 pub struct LightCommand {
@@ -37,8 +37,8 @@ impl ExecutorLogic {
       Command::StartDimDown => light.start_dim_down(),
       Command::StopDim => light.stop_dim(),
     };
-    stream::iter(payloads).for_each_concurrent(None, |(t, p)| async {
-      self.client.lock().await.publish(t, p).await
-    }).await;
+    stream::iter(payloads)
+      .for_each_concurrent(None, |(t, p)| async { self.client.lock().await.publish(t, p).await })
+      .await;
   }
 }

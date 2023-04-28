@@ -7,7 +7,10 @@ pub use remote::Remote;
 pub use sensor::Sensor;
 use serde::{Deserialize, Serialize};
 
-use crate::api::{traits::Addressable, DeviceKind, Topic, TopicMode};
+use crate::api::{
+  topic::{DeviceKind, Topic, TopicMode},
+  traits::Addressable,
+};
 
 pub trait Device: Addressable {
   fn kind(&self) -> DeviceKind;

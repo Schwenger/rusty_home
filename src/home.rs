@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
   api::{
     payload::JsonPayload,
+    topic::{Topic, TopicMode},
     traits::{
       Addressable, EditableHome, EffectiveLight, LightCollection, QueryableHome, ReadWriteHome,
       RemoteCollection, SensorCollection,
     },
-    Topic, TopicMode,
   },
   devices::{Light, Remote},
   Result,

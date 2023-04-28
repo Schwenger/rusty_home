@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
   api::{
+    topic::{Topic, TopicMode},
     traits::{Addressable, EffectiveLight, LightCollection, RemoteCollection, SensorCollection},
-    Topic,
   },
   devices::{Light, LightGroup, Remote, Sensor},
 };
@@ -30,7 +30,7 @@ impl Room {
 }
 
 impl Addressable for Room {
-  fn topic(&self, mode: crate::api::TopicMode) -> Topic {
+  fn topic(&self, mode: TopicMode) -> Topic {
     Topic::Room { name: self.name.clone(), mode }
   }
 }

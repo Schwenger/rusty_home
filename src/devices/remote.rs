@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::api::{light_command, DeviceKind, Topic};
+use crate::api::{
+  light_command,
+  topic::{DeviceKind, Topic},
+};
 
 use super::{Device, DeviceModel};
 

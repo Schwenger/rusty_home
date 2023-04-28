@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::api::DeviceKind;
+use crate::api::topic::DeviceKind;
 
 use super::{Device, DeviceModel};
 

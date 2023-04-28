@@ -1,6 +1,6 @@
 use crate::devices::remote::RemoteButton;
 
-use super::{traits::RemoteCollection, ExecutorLogic, LightCommand, Topic};
+use super::{topic::Topic, traits::RemoteCollection, ExecutorLogic, LightCommand};
 
 #[derive(Debug, Clone)]
 pub struct RemoteAction {

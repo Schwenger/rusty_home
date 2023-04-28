@@ -1,9 +1,9 @@
-use crate::api::Topic;
+use crate::api::topic::Topic;
 use crate::devices::{Device, Light, Remote, Sensor};
 use crate::Result;
 
 use super::payload::{JsonPayload, MqttPayload};
-use super::TopicMode;
+use super::topic::TopicMode;
 
 pub trait QueryableHome {
   fn query_architecture(&self) -> JsonPayload;
@@ -122,14 +122,14 @@ pub trait ReadWriteHome {
 }
 
 pub trait EffectiveLight {
-  fn turn_on(&mut self)         -> Vec<(Topic, MqttPayload)>;
-  fn turn_off(&mut self)        -> Vec<(Topic, MqttPayload)>;
-  fn toggle(&mut self)          -> Vec<(Topic, MqttPayload)>;
-  fn dim_down(&mut self)        -> Vec<(Topic, MqttPayload)>;
-  fn dim_up(&mut self)          -> Vec<(Topic, MqttPayload)>;
-  fn start_dim_down(&mut self)  -> Vec<(Topic, MqttPayload)>;
-  fn start_dim_up(&mut self)    -> Vec<(Topic, MqttPayload)>;
-  fn stop_dim(&mut self)        -> Vec<(Topic, MqttPayload)>;
+  fn turn_on(&mut self) -> Vec<(Topic, MqttPayload)>;
+  fn turn_off(&mut self) -> Vec<(Topic, MqttPayload)>;
+  fn toggle(&mut self) -> Vec<(Topic, MqttPayload)>;
+  fn dim_down(&mut self) -> Vec<(Topic, MqttPayload)>;
+  fn dim_up(&mut self) -> Vec<(Topic, MqttPayload)>;
+  fn start_dim_down(&mut self) -> Vec<(Topic, MqttPayload)>;
+  fn start_dim_up(&mut self) -> Vec<(Topic, MqttPayload)>;
+  fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)>;
 }
 
 pub trait Addressable {
