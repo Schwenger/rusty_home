@@ -8,7 +8,7 @@
 				"$rustc"
 			],
 			"group": "build",
-			"label": "rust: cargo check"
+			"label": "cargo check"
 		},
 		{
 			"type": "cargo",
@@ -17,7 +17,7 @@
 				"$rustc"
 			],
 			"group": "build",
-			"label": "rust: cargo format"
+			"label": "cargo format"
 		},
 		{
 			"type": "cargo",
@@ -26,15 +26,29 @@
 				"$rustc"
 			],
 			"group": "build",
-			"label": "rust: cargo clippy"
+			"label": "cargo clippy"
 		},
 		{
-			"label": "rust: full check",
+			"label": "cargo all",
 			"group": "build",
 			"problemMatcher": [
 				"$rustc"
 			],
 			"dependsOn": ["rust: cargo check", "rust: cargo fmt", "rust: cargo clippy"]
+		},
+		{
+			"label": "cargo run",
+			"type": "shell",
+			"command": "cargo", // note: full path to the cargo
+			"args": [
+				"run",
+				// "--release",
+				// "--",
+				// "arg1"
+			],
+			"group": {
+				"kind": "build"
+			}
 		}
 	]
 }
