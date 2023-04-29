@@ -17,6 +17,13 @@ pub trait DeviceCollection: Debug {
   fn flatten_devices(&self) -> Vec<&Device>;
   fn flatten_devices_mut(&mut self) -> Vec<&mut Device>;
 
+  fn find_device(&self, topic: &Topic) -> Option<&Device> {
+    self.flatten_devices().into_iter().find(|d| &d.topic(topic.mode()) == topic)
+  }
+  fn find_device_mut(&mut self, topic: &Topic) -> Option<&mut Device> {
+    self.flatten_devices_mut().into_iter().find(|d| &d.topic(topic.mode()) == topic)
+  }
+
   fn flatten_lights(&self) -> Vec<&Light> {
     self.flatten_devices().into_iter().flat_map(Device::as_light).collect()
   }
