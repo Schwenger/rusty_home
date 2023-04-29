@@ -111,8 +111,10 @@ impl EffectiveLight for Light {
   }
 
   fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)> {
-    // ToDo: Query state to keep internal brightness up to date.
-    vec![(self.topic(TopicMode::Set), MqttPayload::new().with_stop_dimming().with_transition())]
+    vec![
+      (self.topic(TopicMode::Set), MqttPayload::new().with_stop_dimming().with_transition()),
+      (self.topic(TopicMode::Set), MqttPayload::new().with_state_query()),
+    ]
   }
 
   fn update_state(&mut self, state: LightState) {
