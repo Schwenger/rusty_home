@@ -103,23 +103,33 @@ impl JsonConvertible for MqttPayload {
 
 impl MqttPayload {
   pub fn read_color(model: DeviceModel, payload: SerdeValue) -> Hsv {
-    let color = payload.get("color").expect("No color available.");
-    let bright = color.get("brightness").and_then(SerdeValue::as_i64).unwrap();
+    let bright = payload.get("brightness").and_then(SerdeValue::as_i64).unwrap();
     let bright = Self::read_brightness_scalar(model, bright);
+    let bright = bright.inner() as f32;
+
+    if let Some(color) = payload.get("color") {
+      Self::read_color_encoding(color, bright)
+    } else {
+      Hsv::new_srgb(1.0, 1.0, bright)
+    }
+  }
+
+  fn read_color_encoding(color: &SerdeValue, brightness: f32) -> Hsv {
     if let Some(x) = color.get("x").and_then(SerdeValue::as_f64) {
       let y = color.get("y").and_then(SerdeValue::as_f64).expect("Error");
-      let res: Yxy = Yxy::new(x as f32, y as f32, bright.inner() as f32);
+      let res: Yxy = Yxy::new(x as f32, y as f32, brightness);
       let res: Hsv = Hsv::from_color(res);
       res
     } else if let Some(hue) = color.get("hue").and_then(SerdeValue::as_i64) {
       let sat = color.get("saturation").and_then(SerdeValue::as_i64).expect("Error");
       let hue = hue as f32 / 360.0;
       let sat = sat as f32 / 100.0;
-      Hsv::new_srgb(hue, sat, bright.inner() as f32)
+      Hsv::new_srgb(hue, sat, brightness)
     } else {
-      Hsv::new_srgb(1.0, 1.0, bright.inner() as f32)
+      unimplemented!("Unexpected encoding.")
     }
   }
+
   fn read_brightness_scalar(model: DeviceModel, brightness: i64) -> Scalar {
     let max = match model.vendor() {
       crate::devices::Vendor::Ikea => 254.0,

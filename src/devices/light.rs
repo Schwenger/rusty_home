@@ -118,6 +118,10 @@ impl EffectiveLight for Light {
   fn update_state(&mut self, state: LightState) {
     self.state = state;
   }
+
+  fn query_update(&self) -> Vec<(Topic, MqttPayload)> {
+    vec![(self.topic(TopicMode::Get), MqttPayload::new().with_state_query())]
+  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -190,7 +194,11 @@ impl LightState {
       return Err(HomeBaseError::InvalidLightState);
     }
     let on = value.get("state").unwrap() == "ON";
-    let color = MqttPayload::read_color(model, value);
+    let color = if value.get("brightness").is_some() {
+      MqttPayload::read_color(model, value)
+    } else {
+      Hsv::new(1.0, 1.0, 1.0)
+    };
     Ok(LightState { on, color })
   }
   pub fn brightness(&self) -> Scalar {

@@ -43,7 +43,6 @@ impl WebServer {
   ) -> std::result::Result<Response<Body>, Infallible> {
     println!("\nProcessing request");
     let mut response = Response::new(Body::empty());
-    println!("{}", req.uri().to_string());
     let url =
       Url::parse("http://localhost:8088").and_then(|b| b.join(&req.uri().to_string())).unwrap();
     match (req.method(), url.path()) {

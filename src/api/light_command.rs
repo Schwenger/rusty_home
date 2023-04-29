@@ -15,6 +15,7 @@ pub enum LightCommand {
   StartDimUp,
   StartDimDown,
   StopDim,
+  QueryUpdate,
 }
 
 impl ExecutorLogic {
@@ -29,6 +30,7 @@ impl ExecutorLogic {
       LightCommand::StartDimUp => light.start_dim_up(),
       LightCommand::StartDimDown => light.start_dim_down(),
       LightCommand::StopDim => light.stop_dim(),
+      LightCommand::QueryUpdate => light.query_update(),
     };
     stream::iter(payloads)
       .for_each_concurrent(None, |(t, p)| async { self.client.lock().await.publish(t, p).await })

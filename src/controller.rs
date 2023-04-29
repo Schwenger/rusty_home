@@ -26,8 +26,9 @@ pub struct Controller {
 impl Controller {
   pub async fn new(config: GlobalConfig) -> Result<Self, Error> {
     let home = Home::read(&config.home.dir);
-    let (q_send, q_recv) = unbounded_channel(); // Distribute send more liberally.
+    let (q_send, q_recv) = unbounded_channel();
     let (client, mqtt_receiver) = Self::setup_client(&config, &home, q_send.clone()).await?;
+    home.initialize(&q_send);
     let executor = Executor::new(q_recv, client, home);
     let web_server = WebServer::new(q_send.clone());
     Self::startup(q_send, &config.home.dir);
