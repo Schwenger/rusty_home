@@ -13,22 +13,30 @@ pub trait QueryableHome {
   fn query_device(&self, topic: Topic) -> JsonPayload;
 }
 
-pub trait LightCollection: Debug {
-  fn flatten_lights(&self) -> Vec<&Light>;
-  fn flatten_lights_mut(&mut self) -> Vec<&mut Light>;
-  fn find_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight>;
-  fn find_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight>;
+pub trait DeviceCollection: Debug {
+  fn flatten_devices(&self) -> Vec<&Device>;
+  fn flatten_devices_mut(&mut self) -> Vec<&mut Device>;
+
+  fn flatten_lights(&self) -> Vec<&Light> {
+    self.flatten_devices().into_iter().flat_map(Device::as_light).collect()
+  }
+  fn flatten_lights_mut(&mut self) -> Vec<&mut Light> {
+    self.flatten_devices_mut().into_iter().flat_map(Device::as_light_mut).collect()
+  }
+
   fn find_physical_light(&self, topic: &Topic) -> Option<&Light> {
     self.flatten_lights().into_iter().find(|l| &l.topic(topic.mode()) == topic)
   }
   fn find_physical_light_mut(&mut self, topic: &Topic) -> Option<&mut Light> {
     self.flatten_lights_mut().into_iter().find(|l| &l.topic(topic.mode()) == topic)
   }
-}
 
-pub trait RemoteCollection {
-  fn flatten_remotes(&self) -> Vec<&Remote>;
-  fn flatten_remotes_mut(&mut self) -> Vec<&mut Remote>;
+  fn flatten_remotes(&self) -> Vec<&Remote> {
+    self.flatten_devices().into_iter().flat_map(Device::as_remote).collect()
+  }
+  fn flatten_remotes_mut(&mut self) -> Vec<&mut Remote> {
+    self.flatten_devices_mut().into_iter().flat_map(Device::as_remote_mut).collect()
+  }
 
   fn find_remote(&self, topic: &Topic) -> Option<&Remote> {
     self.flatten_remotes().into_iter().find(|s| &s.topic(topic.mode()) == topic)
@@ -37,11 +45,13 @@ pub trait RemoteCollection {
   fn find_remote_mut(&mut self, topic: &Topic) -> Option<&mut Remote> {
     self.flatten_remotes_mut().into_iter().find(|s| &s.topic(topic.mode()) == topic)
   }
-}
 
-pub trait SensorCollection {
-  fn flatten_sensors(&self) -> Vec<&Sensor>;
-  fn flatten_sensors_mut(&mut self) -> Vec<&mut Sensor>;
+  fn flatten_sensors(&self) -> Vec<&Sensor> {
+    self.flatten_devices().into_iter().flat_map(Device::as_sensor).collect()
+  }
+  fn flatten_sensors_mut(&mut self) -> Vec<&mut Sensor> {
+    self.flatten_devices_mut().into_iter().flat_map(Device::as_sensor_mut).collect()
+  }
 
   fn find_sensor(&self, topic: &Topic) -> Option<&Sensor> {
     self.flatten_sensors().into_iter().find(|s| &s.topic(topic.mode()) == topic)
@@ -52,33 +62,12 @@ pub trait SensorCollection {
   }
 }
 
-pub trait DeviceCollection {
-  fn flatten_devices(&self) -> Vec<&dyn Device>;
+pub trait EffectiveLightCollection {
+  fn find_effective_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight>;
+  fn find_effective_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight>;
 }
 
-impl<T> DeviceCollection for T
-where
-  T: SensorCollection + RemoteCollection + LightCollection,
-{
-  fn flatten_devices(&self) -> Vec<&dyn Device> {
-    std::iter::empty()
-      .chain(self.flatten_lights().into_iter().map(|x| {
-        let y: &dyn Device = x;
-        y
-      }))
-      .chain(self.flatten_remotes().into_iter().map(|x| {
-        let y: &dyn Device = x;
-        y
-      }))
-      .chain(self.flatten_sensors().into_iter().map(|x| {
-        let y: &dyn Device = x;
-        y
-      }))
-      .collect()
-  }
-}
-
-impl<T: LightCollection> EffectiveLight for T {
+impl<T: DeviceCollection> EffectiveLight for T {
   fn turn_on(&mut self) -> Vec<(Topic, MqttPayload)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.turn_on()).collect()
   }

@@ -1,10 +1,10 @@
 use serde_json::Value;
 
-use crate::devices::{light::LightState, sensor::SensorState, Device};
+use crate::devices::{light::LightState, sensor::SensorState, DeviceTrait};
 
 use super::{
   topic::{DeviceKind, Topic},
-  traits::{EffectiveLight, LightCollection, SensorCollection},
+  traits::{DeviceCollection, EffectiveLight},
   ExecutorLogic,
 };
 

@@ -4,12 +4,12 @@ use serde_json::Value;
 
 use crate::api::payload::MqttPayload;
 use crate::api::topic::{DeviceKind, Topic, TopicMode};
-use crate::api::traits::{Addressable, EffectiveLight, LightCollection};
+use crate::api::traits::{Addressable, DeviceCollection, EffectiveLight, EffectiveLightCollection};
 use crate::common::Scalar;
 use crate::error::HomeBaseError;
 use crate::Result;
 
-use super::{Device, DeviceModel};
+use super::{Device, DeviceModel, DeviceTrait};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Light {
@@ -28,12 +28,9 @@ impl Light {
   }
 }
 
-impl Device for Light {
-  fn kind(&self) -> DeviceKind {
-    if let Some(k) = self.pseudo_kind {
-      return k;
-    }
-    self.model.kind()
+impl DeviceTrait for Light {
+  fn virtual_kind(&self) -> DeviceKind {
+    self.pseudo_kind.unwrap_or(DeviceKind::Light)
   }
 
   fn model(&self) -> DeviceModel {
@@ -129,7 +126,9 @@ impl EffectiveLight for Light {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LightGroup {
   name: String,
-  atomics: Vec<Light>,
+  #[serde(serialize_with = "crate::devices::serialize_light_sequence")]
+  #[serde(deserialize_with = "crate::devices::deserialize_light_sequence")]
+  atomics: Vec<Device>,
   subgroups: Vec<LightGroup>,
   room: String,
 }
@@ -146,35 +145,37 @@ impl Addressable for LightGroup {
   }
 }
 
-impl LightCollection for LightGroup {
-  fn flatten_lights(&self) -> Vec<&Light> {
-    let subs = self.subgroups.iter().flat_map(LightGroup::flatten_lights);
+impl DeviceCollection for LightGroup {
+  fn flatten_devices(&self) -> Vec<&Device> {
+    let subs = self.subgroups.iter().flat_map(LightGroup::flatten_devices);
     self.atomics.iter().chain(subs).collect()
   }
 
-  fn flatten_lights_mut(&mut self) -> Vec<&mut Light> {
-    let subs = self.subgroups.iter_mut().flat_map(|l| l.flatten_lights_mut());
+  fn flatten_devices_mut(&mut self) -> Vec<&mut Device> {
+    let subs = self.subgroups.iter_mut().flat_map(LightGroup::flatten_devices_mut);
     self.atomics.iter_mut().chain(subs).collect()
   }
+}
 
-  fn find_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight> {
+impl EffectiveLightCollection for LightGroup {
+  fn find_effective_light(&self, topic: &Topic) -> Option<&dyn EffectiveLight> {
     if &self.topic(topic.mode()) == topic {
       return Some(self);
     }
     if let Some(res) = self.atomics.iter().find(|l| &l.topic(topic.mode()) == topic) {
-      return Some(res);
+      return Some(res.as_light().unwrap());
     }
-    self.subgroups.iter().flat_map(|grp| grp.find_light(topic)).last()
+    self.subgroups.iter().flat_map(|grp| grp.find_effective_light(topic)).last()
   }
 
-  fn find_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight> {
+  fn find_effective_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight> {
     if &self.topic(topic.mode()) == topic {
       return Some(self);
     }
     if let Some(res) = self.atomics.iter_mut().find(|l| &l.topic(topic.mode()) == topic) {
-      return Some(res);
+      return Some(res.as_light_mut().unwrap());
     }
-    self.subgroups.iter_mut().find_map(|grp| grp.find_light_mut(topic))
+    self.subgroups.iter_mut().find_map(|grp| grp.find_effective_light_mut(topic))
   }
 }
 

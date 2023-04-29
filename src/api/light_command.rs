@@ -1,9 +1,7 @@
 use futures::{stream, StreamExt};
 use serde::{Deserialize, Serialize};
 
-use crate::api::traits::LightCollection;
-
-use super::{topic::Topic, ExecutorLogic};
+use super::{topic::Topic, traits::EffectiveLightCollection, ExecutorLogic};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LightCommand {
@@ -20,7 +18,7 @@ pub enum LightCommand {
 
 impl ExecutorLogic {
   pub(super) async fn execute_light(&mut self, cmd: LightCommand, target: Topic) {
-    let light = self.home.find_light_mut(&target).expect("Implement error handling.");
+    let light = self.home.find_effective_light_mut(&target).expect("Implement error handling.");
     let payloads = match cmd {
       LightCommand::TurnOn => light.turn_on(),
       LightCommand::TurnOff => light.turn_off(),

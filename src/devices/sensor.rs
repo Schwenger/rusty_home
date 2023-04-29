@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use crate::api::topic::DeviceKind;
 
-use super::{Device, DeviceModel};
+use super::{DeviceModel, DeviceTrait};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Sensor {
@@ -21,8 +21,8 @@ impl Sensor {
   }
 }
 
-impl Device for Sensor {
-  fn kind(&self) -> DeviceKind {
+impl DeviceTrait for Sensor {
+  fn virtual_kind(&self) -> DeviceKind {
     DeviceKind::Sensor
   }
 

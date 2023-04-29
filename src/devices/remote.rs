@@ -8,7 +8,7 @@ use crate::api::{
   topic::{DeviceKind, Topic},
 };
 
-use super::{Device, DeviceModel};
+use super::{DeviceModel, DeviceTrait};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Copy)]
 #[serde(untagged)]
@@ -71,8 +71,8 @@ pub struct Remote {
   actions: HashMap<RemoteButton, LightCommand>, // ToDo: Map to Api Command.
 }
 
-impl Device for Remote {
-  fn kind(&self) -> DeviceKind {
+impl DeviceTrait for Remote {
+  fn virtual_kind(&self) -> DeviceKind {
     DeviceKind::Remote
   }
 
