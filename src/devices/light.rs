@@ -22,6 +22,12 @@ pub struct Light {
   state: LightState,
 }
 
+impl Light {
+  pub fn state(&self) -> LightState {
+    self.state
+  }
+}
+
 impl Device for Light {
   fn kind(&self) -> DeviceKind {
     if let Some(k) = self.pseudo_kind {

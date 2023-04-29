@@ -46,10 +46,10 @@ impl DeviceModel {
     match self {
       DeviceModel::TuyaHumidity => DeviceKind::Sensor,
       DeviceModel::IkeaOutlet => DeviceKind::Outlet,
-      DeviceModel::IkeaDimmable => DeviceKind::Remote,
+      DeviceModel::IkeaDimmable => DeviceKind::Light,
       DeviceModel::HueColor => DeviceKind::Light,
       DeviceModel::IkeaMultiButton => DeviceKind::Remote,
-      DeviceModel::IkeaDimmer => DeviceKind::Light,
+      DeviceModel::IkeaDimmer => DeviceKind::Remote,
     }
   }
 

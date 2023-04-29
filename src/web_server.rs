@@ -4,7 +4,9 @@ use std::convert::Infallible;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
+use url::Url;
 
+use crate::api::topic::Topic;
 use crate::api::{Query, Request};
 use crate::Result;
 
@@ -39,14 +41,25 @@ impl WebServer {
     req: HyperRequest<Body>,
     queue: UnboundedSender<Request>,
   ) -> std::result::Result<Response<Body>, Infallible> {
-    println!("Processing request");
+    println!("\nProcessing request");
     let mut response = Response::new(Body::empty());
-    match (req.method(), req.uri().path()) {
+    println!("{}", req.uri().to_string());
+    let url =
+      Url::parse("http://localhost:8088").and_then(|b| b.join(&req.uri().to_string())).unwrap();
+    match (req.method(), url.path()) {
       (&Method::GET, "/") => *response.body_mut() = Body::from("Test successful."),
       (&Method::GET, "/query/Structure") => {
         let (sender, receiver) = oneshot::channel();
         queue.send(Request::Query(Query::Architecture, sender)).unwrap();
         let resp = receiver.await.unwrap();
+        *response.body_mut() = Body::from(resp.to_str());
+      }
+      (&Method::GET, "/query/LightState") => {
+        let target = find_topic(&url).expect("Error handling.");
+        let (sender, receiver) = oneshot::channel();
+        queue.send(Request::Query(Query::LightState(target), sender)).unwrap();
+        let resp = receiver.await.unwrap();
+        println!("{}", resp.inner());
         *response.body_mut() = Body::from(resp.to_str());
       }
       (&Method::POST, _) => panic!("Received post request"),
@@ -57,4 +70,12 @@ impl WebServer {
     };
     Ok(response)
   }
+}
+
+fn find_topic(url: &Url) -> Option<Topic> {
+  url
+    .query_pairs()
+    .filter_map(|(k, v)| if k == "topic" { Some(v.to_string()) } else { None })
+    .map(Topic::try_from)
+    .find_map(Result::ok)
 }

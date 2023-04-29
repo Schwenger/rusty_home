@@ -18,3 +18,4 @@ hyper = { version = "0.14.26", features = ["server", "tcp", "http1"] }
 tokio = { version = "1.27.0", features = ["full"] }
 futures = "0.3.28"
 palette = { version = "0.7.1", features = ["serializing"] }
+url = "2.3.1"
