@@ -1,6 +1,7 @@
 use crate::devices::DeviceModel;
 use crate::Error;
 use crate::Result;
+use palette::{FromColor, Hsv, Yxy};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value as SerdeValue;
@@ -101,7 +102,25 @@ impl JsonConvertible for MqttPayload {
 }
 
 impl MqttPayload {
-  pub fn read_brightness_scalar(model: DeviceModel, brightness: i64) -> Scalar {
+  pub fn read_color(model: DeviceModel, payload: SerdeValue) -> Hsv {
+    let color = payload.get("color").expect("No color available.");
+    let bright = color.get("brightness").and_then(SerdeValue::as_i64).unwrap();
+    let bright = Self::read_brightness_scalar(model, bright);
+    if let Some(x) = color.get("x").and_then(SerdeValue::as_f64) {
+      let y = color.get("y").and_then(SerdeValue::as_f64).expect("Error");
+      let res: Yxy = Yxy::new(x as f32, y as f32, bright.inner() as f32);
+      let res: Hsv = Hsv::from_color(res);
+      res
+    } else if let Some(hue) = color.get("hue").and_then(SerdeValue::as_i64) {
+      let sat = color.get("saturation").and_then(SerdeValue::as_i64).expect("Error");
+      let hue = hue as f32 / 360.0;
+      let sat = sat as f32 / 100.0;
+      Hsv::new_srgb(hue, sat, bright.inner() as f32)
+    } else {
+      Hsv::new_srgb(1.0, 1.0, bright.inner() as f32)
+    }
+  }
+  fn read_brightness_scalar(model: DeviceModel, brightness: i64) -> Scalar {
     let max = match model.vendor() {
       crate::devices::Vendor::Ikea => 254.0,
       crate::devices::Vendor::Philips => 254.0,

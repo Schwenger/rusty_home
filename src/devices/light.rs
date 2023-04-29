@@ -1,3 +1,4 @@
+use palette::{DarkenAssign, Hsv, LightenAssign};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -74,18 +75,18 @@ impl EffectiveLight for Light {
   }
 
   fn dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
-    self.state.brightness -= 0.2;
+    self.state.dim_down();
     vec![(
       self.topic(TopicMode::Set),
-      MqttPayload::new().with_brightness_change(self.state.brightness).with_transition(),
+      MqttPayload::new().with_brightness_change(self.state.brightness()).with_transition(),
     )]
   }
 
   fn dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
-    self.state.brightness += 0.2;
+    self.state.dim_up();
     vec![(
       self.topic(TopicMode::Set),
-      MqttPayload::new().with_brightness_change(self.state.brightness).with_transition(),
+      MqttPayload::new().with_brightness_change(self.state.brightness()).with_transition(),
     )]
   }
 
@@ -168,12 +169,12 @@ impl LightCollection for LightGroup {
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub struct LightState {
   pub on: bool,
-  pub brightness: Scalar,
+  pub color: Hsv,
 }
 
 impl Default for LightState {
   fn default() -> Self {
-    Self { on: false, brightness: 1.0.into() }
+    Self { on: false, color: Hsv::new(1.0, 1.0, 1.0) }
   }
 }
 
@@ -183,11 +184,16 @@ impl LightState {
       return Err(HomeBaseError::InvalidLightState);
     }
     let on = value.get("state").unwrap() == "ON";
-    let brightness = value
-      .get("brightness")
-      .and_then(Value::as_i64)
-      .map(|v| MqttPayload::read_brightness_scalar(model, v))
-      .unwrap_or(1.0.into());
-    Ok(LightState { on, brightness })
+    let color = MqttPayload::read_color(model, value);
+    Ok(LightState { on, color })
+  }
+  pub fn brightness(&self) -> Scalar {
+    Scalar::from(self.color.value as f64)
+  }
+  pub fn dim_down(&mut self) {
+    self.color.darken_assign(0.8);
+  }
+  pub fn dim_up(&mut self) {
+    self.color.lighten_assign(0.8);
   }
 }
