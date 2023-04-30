@@ -13,7 +13,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::{join, pin, select};
 
 use crate::{
-  api::executor::Executor,
+  api::Executor,
   config::GlobalConfig,
   mqtt::{self, MqttReceiver, ProtectedClient},
   Error,
