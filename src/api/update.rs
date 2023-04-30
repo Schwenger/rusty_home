@@ -1,21 +1,23 @@
-use crate::{devices::DeviceTrait, mqtt::MqttState};
+use crate::devices::DeviceTrait;
 
 use super::{
   executor::ExecutorLogic,
-  topic::{DeviceKind, Topic},
+  request::DeviceCommand,
+  topic::{Topic, TopicMode},
   traits::DeviceCollection,
 };
 
 impl ExecutorLogic {
-  pub(super) async fn update(&mut self, whom: Topic, with: MqttState) {
-    match whom.device().unwrap() {
-      DeviceKind::Light => {
-        let light = self.home.find_physical_light_mut(&whom).expect("Error");
-        light.update_state(with);
+  pub(super) async fn execute_device(&mut self, target: Topic, cmd: DeviceCommand) {
+    match cmd {
+      DeviceCommand::UpdateState(state) => {
+        self.home.find_device_mut(&target).unwrap().update_state(state);
       }
-      DeviceKind::Sensor => self.home.find_sensor_mut(&whom).expect("Error").update_state(with),
-      DeviceKind::Outlet => todo!("Received non-pseudo-light-outlet update, dafuq?"),
-      DeviceKind::Remote => todo!("Received remote update, dafuq?"),
+      DeviceCommand::QueryUpdate => {
+        let device = self.home.find_device(&target).unwrap();
+        let payload = device.query_update();
+        self.send_mqtt_payloads(vec![(target.with_mode(TopicMode::Get), payload)]).await;
+      }
     }
   }
 }

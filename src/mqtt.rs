@@ -3,8 +3,8 @@ use std::{borrow::Borrow, sync::Arc, thread, time::Duration};
 use crate::{
   api::{
     payload::MqttPayload,
-    request::{LightCommand, RemoteAction},
-    request::{Request, Update},
+    request::RemoteAction,
+    request::{DeviceCommand, Request},
     topic::TopicKind,
     topic::{Topic, TopicMode},
     traits::{Addressable, JsonConvertible},
@@ -94,7 +94,7 @@ impl MqttClient {
     } else if target.device().is_some() {
       println!("Received update");
       let state = serde_json::from_str(&msg.payload_str()).unwrap();
-      let req = Request::Update(Update { state, target });
+      let req = Request::DeviceCommand(DeviceCommand::UpdateState(state), target);
       self.queue.send(req).expect("Error handling.");
     }
   }
@@ -113,7 +113,7 @@ impl MqttClient {
     devices
       .into_iter()
       .map(|d| d.topic(TopicMode::Blank))
-      .map(|t| Request::LightCommand(LightCommand::QueryUpdate, t))
+      .map(|t| Request::DeviceCommand(DeviceCommand::QueryUpdate, t))
       .for_each(|r| queue.send(r).unwrap())
   }
 

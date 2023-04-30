@@ -50,6 +50,10 @@ impl DeviceTrait for Light {
   fn query_state(&self) -> MqttState {
     self.state.to_mqtt_state(self.model())
   }
+
+  fn query_update(&self) -> MqttPayload {
+    MqttPayload::new().with_state_query()
+  }
 }
 
 impl EffectiveLight for Light {
@@ -118,10 +122,6 @@ impl EffectiveLight for Light {
       (self.topic(TopicMode::Set), MqttPayload::new().with_stop_dimming().with_transition()),
       (self.topic(TopicMode::Set), MqttPayload::new().with_state_query()),
     ]
-  }
-
-  fn query_update(&self) -> Vec<(Topic, MqttPayload)> {
-    vec![(self.topic(TopicMode::Get), MqttPayload::new().with_state_query())]
   }
 }
 

@@ -1,8 +1,9 @@
+use futures::{stream, StreamExt};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::{home::Home, mqtt::ProtectedClient, Result};
 
-use super::request::Request;
+use super::{payload::MqttPayload, request::Request, topic::Topic};
 
 #[allow(missing_debug_implementations)]
 pub struct Executor {
@@ -40,7 +41,13 @@ impl ExecutorLogic {
       Request::HomeEdit(he) => self.edit_home(he).await,
       Request::General(general) => self.execute_general(general).await,
       Request::RemoteAction(ra) => self.remote_action(ra).await,
-      Request::Update(update) => self.update(update.target, update.state).await,
+      Request::DeviceCommand(cmd, target) => self.execute_device(target, cmd).await,
     }
+  }
+
+  pub(super) async fn send_mqtt_payloads(&mut self, payloads: Vec<(Topic, MqttPayload)>) {
+    stream::iter(payloads)
+      .for_each_concurrent(None, |(t, p)| async { self.client.lock().await.publish(t, p).await })
+      .await;
   }
 }

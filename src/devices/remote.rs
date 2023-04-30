@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{api::request::LightCommand, mqtt::MqttState};
+use crate::{
+  api::{payload::MqttPayload, request::LightCommand},
+  mqtt::MqttState,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::api::topic::{DeviceKind, Topic};
@@ -89,6 +92,10 @@ impl DeviceTrait for Remote {
 
   fn query_state(&self) -> MqttState {
     MqttState::default()
+  }
+
+  fn query_update(&self) -> MqttPayload {
+    MqttPayload::new().with_battery_query() // Makes no sense, but it has to query _something_.
   }
 }
 

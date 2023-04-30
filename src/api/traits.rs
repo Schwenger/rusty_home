@@ -105,10 +105,6 @@ impl<T: DeviceCollection> EffectiveLight for T {
   fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.stop_dim()).collect()
   }
-
-  fn query_update(&self) -> Vec<(Topic, MqttPayload)> {
-    self.flatten_lights().into_iter().flat_map(|l| l.query_update()).collect()
-  }
 }
 
 pub trait EditableHome {
@@ -129,7 +125,6 @@ pub trait EffectiveLight: Debug {
   fn start_dim_down(&mut self) -> Vec<(Topic, MqttPayload)>;
   fn start_dim_up(&mut self) -> Vec<(Topic, MqttPayload)>;
   fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)>;
-  fn query_update(&self) -> Vec<(Topic, MqttPayload)>;
 }
 
 pub trait Addressable {

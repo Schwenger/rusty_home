@@ -8,7 +8,7 @@ use super::{payload::JsonPayload, topic::Topic};
 #[derive(Debug)]
 pub enum Request {
   Query(Query, Sender<JsonPayload>),
-  Update(Update),
+  DeviceCommand(DeviceCommand, Topic),
   LightCommand(LightCommand, Topic),
   RemoteAction(RemoteAction),
   HomeEdit(HomeEdit),
@@ -21,12 +21,6 @@ pub enum Query {
   DeviceState(Topic),
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Update {
-  pub state: MqttState,
-  pub target: Topic,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LightCommand {
   TurnOn,
@@ -37,6 +31,11 @@ pub enum LightCommand {
   StartDimUp,
   StartDimDown,
   StopDim,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum DeviceCommand {
+  UpdateState(MqttState),
   QueryUpdate,
 }
 

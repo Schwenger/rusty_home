@@ -9,6 +9,7 @@ use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize};
 
 use crate::{
   api::{
+    payload::MqttPayload,
     topic::{DeviceKind, Topic, TopicMode},
     traits::Addressable,
   },
@@ -22,6 +23,7 @@ pub trait DeviceTrait: Addressable {
   fn room(&self) -> &str;
   fn update_state(&mut self, state: MqttState);
   fn query_state(&self) -> MqttState;
+  fn query_update(&self) -> MqttPayload;
   fn physical_kind(&self) -> DeviceKind {
     self.model().kind()
   }
@@ -138,6 +140,10 @@ impl DeviceTrait for Device {
 
   fn query_state(&self) -> MqttState {
     self.inner().query_state()
+  }
+
+  fn query_update(&self) -> MqttPayload {
+    self.inner().query_update()
   }
 }
 

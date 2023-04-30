@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{api::topic::DeviceKind, mqtt::MqttState};
+use crate::{
+  api::{payload::MqttPayload, topic::DeviceKind},
+  mqtt::MqttState,
+};
 
 use super::{Capability, DeviceModel, DeviceTrait};
 
@@ -38,6 +41,10 @@ impl DeviceTrait for Sensor {
 
   fn query_state(&self) -> MqttState {
     self.state.to_mqtt_state(self.model)
+  }
+
+  fn query_update(&self) -> MqttPayload {
+    MqttPayload::new().with_state_query()
   }
 }
 

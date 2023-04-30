@@ -54,6 +54,11 @@ impl MqttPayload {
     self
   }
 
+  pub fn with_battery_query(mut self) -> Self {
+    self.insert("battery", json!(""));
+    self
+  }
+
   pub fn with_brightness_change(self, val: Scalar) -> Self {
     self.with_brightness(json!(val.inner()))
   }
