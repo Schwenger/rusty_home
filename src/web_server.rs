@@ -6,8 +6,8 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 use url::Url;
 
+use crate::api::request::{Query, Request};
 use crate::api::topic::Topic;
-use crate::api::{Query, Request};
 use crate::Result;
 
 #[derive(Debug)]
@@ -56,7 +56,7 @@ impl WebServer {
       (&Method::GET, "/query/LightState") => {
         let target = find_topic(&url).expect("Error handling.");
         let (sender, receiver) = oneshot::channel();
-        queue.send(Request::Query(Query::LightState(target), sender)).unwrap();
+        queue.send(Request::Query(Query::DeviceState(target), sender)).unwrap();
         let resp = receiver.await.unwrap();
         println!("{}", resp.inner());
         *response.body_mut() = Body::from(resp.to_str());

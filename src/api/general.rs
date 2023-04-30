@@ -1,9 +1,4 @@
-use super::{traits::ReadWriteHome, ExecutorLogic};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum General {
-  Shutdown { home_path: String },
-}
+use super::{executor::ExecutorLogic, request::General, traits::ReadWriteHome};
 
 impl ExecutorLogic {
   pub(super) async fn execute_general(&mut self, cmd: General) {

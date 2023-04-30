@@ -3,16 +3,20 @@ use std::{borrow::Borrow, sync::Arc, thread, time::Duration};
 use crate::{
   api::{
     payload::MqttPayload,
-    remote::RemoteAction,
+    request::{LightCommand, RemoteAction},
+    request::{Request, Update},
     topic::TopicKind,
     topic::{Topic, TopicMode},
-    traits::JsonConvertible,
-    Request,
+    traits::{Addressable, JsonConvertible},
   },
-  devices::remote::{IkeaDimmer, RemoteButton},
+  devices::{
+    remote::{IkeaDimmer, RemoteButton},
+    Device,
+  },
   Result,
 };
 use paho_mqtt::{AsyncClient, AsyncReceiver, CreateOptionsBuilder, Message, QOS_1};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::{mpsc::UnboundedSender, Mutex};
 
@@ -89,7 +93,8 @@ impl MqttClient {
       }
     } else if target.device().is_some() {
       println!("Received update");
-      let req = Request::Update(payload, target);
+      let state = serde_json::from_str(&msg.payload_str()).unwrap();
+      let req = Request::Update(Update { state, target });
       self.queue.send(req).expect("Error handling.");
     }
   }
@@ -104,14 +109,12 @@ impl MqttClient {
     println!("Connection re-established.");
   }
 
-  pub async fn query_states(&self, topics: &[&str]) {
-    for topic in topics {
-      self.query_state(topic).await
-    }
-  }
-
-  async fn query_state(&self, _topic: &str) {
-    todo!();
+  pub async fn query_states(&self, devices: Vec<&Device>, queue: UnboundedSender<Request>) {
+    devices
+      .into_iter()
+      .map(|d| d.topic(TopicMode::Blank))
+      .map(|t| Request::LightCommand(LightCommand::QueryUpdate, t))
+      .for_each(|r| queue.send(r).unwrap())
   }
 
   pub async fn subscribe_to_all<I: IntoIterator<Item = Topic>>(&self, topics: I) {
@@ -129,5 +132,48 @@ impl MqttClient {
     if let Err(err) = self.client.disconnect(None).await {
       eprintln!("Failed to disconnect with error: {err}.")
     }
+  }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
+pub struct MqttState {
+  #[serde(default)]
+  pub brightness: Option<i32>,
+  #[serde(default)]
+  pub color: Option<MqttColorXy>,
+  #[serde(default)]
+  pub state: Option<MqttOnOff>,
+  #[serde(default)]
+  pub temperature: Option<f64>,
+  #[serde(default)]
+  pub humidity: Option<f64>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
+pub struct MqttColorXy {
+  pub x: f32,
+  pub y: f32,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum MqttOnOff {
+  On,
+  Off,
+}
+
+impl From<bool> for MqttOnOff {
+  fn from(value: bool) -> Self {
+    if value {
+      MqttOnOff::On
+    } else {
+      MqttOnOff::Off
+    }
+  }
+}
+
+impl From<MqttOnOff> for bool {
+  fn from(val: MqttOnOff) -> Self {
+    val == MqttOnOff::On
   }
 }

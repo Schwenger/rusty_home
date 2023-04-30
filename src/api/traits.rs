@@ -1,7 +1,6 @@
 use core::fmt::Debug;
 
 use crate::api::topic::Topic;
-use crate::devices::light::LightState;
 use crate::devices::{Device, Light, Remote, Sensor};
 use crate::Result;
 
@@ -107,10 +106,6 @@ impl<T: DeviceCollection> EffectiveLight for T {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.stop_dim()).collect()
   }
 
-  fn update_state(&mut self, state: LightState) {
-    self.flatten_lights_mut().into_iter().for_each(|l| l.update_state(state))
-  }
-
   fn query_update(&self) -> Vec<(Topic, MqttPayload)> {
     self.flatten_lights().into_iter().flat_map(|l| l.query_update()).collect()
   }
@@ -134,7 +129,6 @@ pub trait EffectiveLight: Debug {
   fn start_dim_down(&mut self) -> Vec<(Topic, MqttPayload)>;
   fn start_dim_up(&mut self) -> Vec<(Topic, MqttPayload)>;
   fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)>;
-  fn update_state(&mut self, state: LightState);
   fn query_update(&self) -> Vec<(Topic, MqttPayload)>;
 }
 

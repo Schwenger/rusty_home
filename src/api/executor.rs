@@ -1,6 +1,8 @@
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::{api::Request, home::Home, mqtt::ProtectedClient, Result};
+use crate::{home::Home, mqtt::ProtectedClient, Result};
+
+use super::request::Request;
 
 #[allow(missing_debug_implementations)]
 pub struct Executor {
@@ -38,7 +40,7 @@ impl ExecutorLogic {
       Request::HomeEdit(he) => self.edit_home(he).await,
       Request::General(general) => self.execute_general(general).await,
       Request::RemoteAction(ra) => self.remote_action(ra).await,
-      Request::Update(update, topic) => self.update(topic, update).await,
+      Request::Update(update) => self.update(update.target, update.state).await,
     }
   }
 }

@@ -1,11 +1,6 @@
 use crate::api::traits::EditableHome;
 
-use super::ExecutorLogic;
-
-#[derive(Debug, Clone)]
-pub enum HomeEdit {
-  AddRoom { name: String },
-}
+use super::{executor::ExecutorLogic, request::HomeEdit};
 
 impl ExecutorLogic {
   pub(super) async fn edit_home(&mut self, edit: HomeEdit) {

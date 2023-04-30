@@ -1,20 +1,8 @@
 use futures::{stream, StreamExt};
-use serde::{Deserialize, Serialize};
 
-use super::{topic::Topic, traits::EffectiveLightCollection, ExecutorLogic};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum LightCommand {
-  TurnOn,
-  TurnOff,
-  Toggle,
-  DimUp,
-  DimDown,
-  StartDimUp,
-  StartDimDown,
-  StopDim,
-  QueryUpdate,
-}
+use super::{
+  executor::ExecutorLogic, request::LightCommand, topic::Topic, traits::EffectiveLightCollection,
+};
 
 impl ExecutorLogic {
   pub(super) async fn execute_light(&mut self, cmd: LightCommand, target: Topic) {

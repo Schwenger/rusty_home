@@ -7,9 +7,12 @@ pub use remote::Remote;
 pub use sensor::Sensor;
 use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize};
 
-use crate::api::{
-  topic::{DeviceKind, Topic, TopicMode},
-  traits::Addressable,
+use crate::{
+  api::{
+    topic::{DeviceKind, Topic, TopicMode},
+    traits::Addressable,
+  },
+  mqtt::MqttState,
 };
 
 pub trait DeviceTrait: Addressable {
@@ -17,9 +20,21 @@ pub trait DeviceTrait: Addressable {
   fn model(&self) -> DeviceModel;
   fn name(&self) -> &str;
   fn room(&self) -> &str;
+  fn update_state(&mut self, state: MqttState);
+  fn query_state(&self) -> MqttState;
   fn physical_kind(&self) -> DeviceKind {
     self.model().kind()
   }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub enum Capability {
+  Brightness,
+  Color,
+  Transition,
+  State,
+  Humidity,
+  Temperature,
 }
 
 #[derive(Debug, Clone)]
@@ -73,6 +88,13 @@ impl Device {
       Device::Remote(r) => r,
     }
   }
+  fn inner_mut(&mut self) -> &mut dyn DeviceTrait {
+    match self {
+      Device::Light(l) => l,
+      Device::Sensor(s) => s,
+      Device::Remote(r) => r,
+    }
+  }
 }
 
 impl From<Light> for Device {
@@ -108,6 +130,14 @@ impl DeviceTrait for Device {
 
   fn room(&self) -> &str {
     self.inner().room()
+  }
+
+  fn update_state(&mut self, state: MqttState) {
+    self.inner_mut().update_state(state);
+  }
+
+  fn query_state(&self) -> MqttState {
+    self.inner().query_state()
   }
 }
 
@@ -153,6 +183,34 @@ impl DeviceModel {
       | DeviceModel::IkeaMultiButton
       | DeviceModel::IkeaDimmer => Vendor::Ikea,
       DeviceModel::HueColor => Vendor::Philips,
+    }
+  }
+
+  pub fn capabilities(&self) -> Vec<Capability> {
+    match self {
+      DeviceModel::TuyaHumidity => vec![Capability::Humidity, Capability::Temperature],
+      DeviceModel::IkeaOutlet => vec![Capability::State],
+      DeviceModel::IkeaDimmable => vec![Capability::State, Capability::Brightness],
+      DeviceModel::HueColor => vec![Capability::State, Capability::Brightness, Capability::Color],
+      DeviceModel::IkeaMultiButton => vec![],
+      DeviceModel::IkeaDimmer => vec![],
+    }
+  }
+
+  pub fn capable_of(&self, capa: Capability) -> bool {
+    self.capabilities().contains(&capa)
+  }
+
+  pub fn max_brightness(&self) -> i32 {
+    match self {
+      DeviceModel::IkeaDimmable => 254,
+      DeviceModel::HueColor => 254,
+      DeviceModel::TuyaHumidity
+      | DeviceModel::IkeaOutlet
+      | DeviceModel::IkeaMultiButton
+      | DeviceModel::IkeaDimmer => {
+        panic!("There is no brightness for models not capable of brightness!")
+      }
     }
   }
 }

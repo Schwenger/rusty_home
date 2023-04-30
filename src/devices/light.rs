@@ -1,15 +1,13 @@
-use palette::{DarkenAssign, Hsv, LightenAssign};
+use palette::{DarkenAssign, Hsv, IntoColor, LightenAssign, Yxy};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::api::payload::MqttPayload;
 use crate::api::topic::{DeviceKind, Topic, TopicMode};
 use crate::api::traits::{Addressable, DeviceCollection, EffectiveLight, EffectiveLightCollection};
 use crate::common::Scalar;
-use crate::error::HomeBaseError;
-use crate::Result;
+use crate::mqtt::{MqttColorXy, MqttState};
 
-use super::{Device, DeviceModel, DeviceTrait};
+use super::{Capability, Device, DeviceModel, DeviceTrait};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Light {
@@ -43,6 +41,14 @@ impl DeviceTrait for Light {
 
   fn room(&self) -> &str {
     &self.room
+  }
+
+  fn update_state(&mut self, state: MqttState) {
+    self.state.with_mqtt_state(self.model(), state);
+  }
+
+  fn query_state(&self) -> MqttState {
+    self.state.to_mqtt_state(self.model())
   }
 }
 
@@ -112,10 +118,6 @@ impl EffectiveLight for Light {
       (self.topic(TopicMode::Set), MqttPayload::new().with_stop_dimming().with_transition()),
       (self.topic(TopicMode::Set), MqttPayload::new().with_state_query()),
     ]
-  }
-
-  fn update_state(&mut self, state: LightState) {
-    self.state = state;
   }
 
   fn query_update(&self) -> Vec<(Topic, MqttPayload)> {
@@ -192,17 +194,35 @@ impl Default for LightState {
 }
 
 impl LightState {
-  pub fn from_payload(value: Value, model: DeviceModel) -> Result<Self> {
-    if value.get("state").is_none() {
-      return Err(HomeBaseError::InvalidLightState);
+  pub fn with_mqtt_state(&mut self, model: DeviceModel, state: MqttState) {
+    if model.capable_of(Capability::State) {
+      self.on = state.state.unwrap().into();
     }
-    let on = value.get("state").unwrap() == "ON";
-    let color = if value.get("brightness").is_some() {
-      MqttPayload::read_color(model, value)
-    } else {
-      Hsv::new(1.0, 1.0, 1.0)
-    };
-    Ok(LightState { on, color })
+    if model.capable_of(Capability::Brightness) {
+      self.color.value = (state.brightness.unwrap() / model.max_brightness()) as f32;
+    }
+    if model.capable_of(Capability::Color) {
+      let color = state.color.unwrap();
+      let color = Yxy::new(color.x, color.y, self.brightness().inner() as f32);
+      let color: Hsv = color.into_color();
+      self.color = color;
+    }
+  }
+
+  pub fn to_mqtt_state(&self, model: DeviceModel) -> MqttState {
+    let mut res = MqttState::default();
+    if model.capable_of(Capability::State) {
+      res.state = Some(self.on.into());
+    }
+    if model.capable_of(Capability::Brightness) {
+      let v = self.brightness().inner() * model.max_brightness() as f64;
+      res.brightness = Some(v as i32);
+    }
+    if model.capable_of(Capability::Color) {
+      let xy: Yxy = self.color.into_color();
+      res.color = Some(MqttColorXy { x: xy.x, y: xy.y });
+    }
+    res
   }
   pub fn brightness(&self) -> Scalar {
     Scalar::from(self.color.value as f64)

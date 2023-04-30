@@ -1,7 +1,6 @@
 use std::fs::File;
 
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
   api::{
@@ -11,9 +10,8 @@ use crate::{
       Addressable, DeviceCollection, EditableHome, EffectiveLight, EffectiveLightCollection,
       QueryableHome, ReadWriteHome,
     },
-    LightCommand, Request,
   },
-  devices::Device,
+  devices::{Device, DeviceTrait},
   Result,
 };
 
@@ -86,17 +84,6 @@ impl QueryableHome for Home {
   }
 
   fn query_device(&self, topic: Topic) -> JsonPayload {
-    JsonPayload::from(&self.find_physical_light(&topic).unwrap().state())
-  }
-}
-
-impl Home {
-  pub fn initialize(&self, queue: &UnboundedSender<Request>) {
-    self
-      .flatten_lights()
-      .into_iter()
-      .map(|l| l.topic(TopicMode::Blank))
-      .map(|t| Request::LightCommand(LightCommand::QueryUpdate, t))
-      .for_each(|req| queue.send(req).expect("Should work"))
+    JsonPayload::from(&self.find_device(&topic).unwrap().query_state())
   }
 }

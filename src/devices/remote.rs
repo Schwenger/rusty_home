@@ -1,12 +1,9 @@
 use std::collections::HashMap;
 
-use light_command::LightCommand;
+use crate::{api::request::LightCommand, mqtt::MqttState};
 use serde::{Deserialize, Serialize};
 
-use crate::api::{
-  light_command,
-  topic::{DeviceKind, Topic},
-};
+use crate::api::topic::{DeviceKind, Topic};
 
 use super::{DeviceModel, DeviceTrait};
 
@@ -86,6 +83,12 @@ impl DeviceTrait for Remote {
 
   fn room(&self) -> &str {
     &self.room
+  }
+
+  fn update_state(&mut self, _state: MqttState) {}
+
+  fn query_state(&self) -> MqttState {
+    MqttState::default()
   }
 }
 

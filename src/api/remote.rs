@@ -1,12 +1,4 @@
-use crate::devices::remote::RemoteButton;
-
-use super::{topic::Topic, traits::DeviceCollection, ExecutorLogic};
-
-#[derive(Debug, Clone)]
-pub struct RemoteAction {
-  pub button: RemoteButton,
-  pub target: Topic,
-}
+use super::{executor::ExecutorLogic, request::RemoteAction, traits::DeviceCollection};
 
 impl ExecutorLogic {
   pub(super) async fn remote_action(&mut self, action: RemoteAction) {

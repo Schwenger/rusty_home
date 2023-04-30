@@ -3,14 +3,17 @@ use std::time::Duration;
 
 use crate::api::topic::TopicMode;
 use crate::api::traits::{Addressable, DeviceCollection};
-use crate::api::{traits::ReadWriteHome, General, Request};
+use crate::api::{
+  request::{General, Request},
+  traits::ReadWriteHome,
+};
 use crate::home::Home;
 use crate::web_server::WebServer;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::{join, pin, select};
 
 use crate::{
-  api::Executor,
+  api::executor::Executor,
   config::GlobalConfig,
   mqtt::{self, MqttReceiver, ProtectedClient},
   Error,
@@ -28,7 +31,6 @@ impl Controller {
     let home = Home::read(&config.home.dir);
     let (q_send, q_recv) = unbounded_channel();
     let (client, mqtt_receiver) = Self::setup_client(&config, &home, q_send.clone()).await?;
-    home.initialize(&q_send);
     let executor = Executor::new(q_recv, client, home);
     let web_server = WebServer::new(q_send.clone());
     Self::startup(q_send, &config.home.dir);
@@ -53,13 +55,12 @@ impl Controller {
     queue: UnboundedSender<Request>,
   ) -> Result<(ProtectedClient, MqttReceiver), Error> {
     let (client, receiver) =
-      mqtt::setup_client(&config.mosquitto.ip, config.mosquitto.port, queue).await?;
-    let empty = vec![];
+      mqtt::setup_client(&config.mosquitto.ip, config.mosquitto.port, queue.clone()).await?;
     {
       let client = client.lock().await;
       let subscribe = home.flatten_devices().into_iter().map(|d| d.topic(TopicMode::Blank));
       let sub = client.subscribe_to_all(subscribe);
-      let que = client.query_states(&empty);
+      let que = client.query_states(home.flatten_devices(), queue);
       join!(sub, que);
     }
     Ok((client, receiver))
