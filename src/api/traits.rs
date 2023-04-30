@@ -2,6 +2,7 @@ use core::fmt::Debug;
 
 use crate::api::topic::Topic;
 use crate::devices::{Device, Light, Remote, Sensor};
+use crate::web_server::RestApiPayload;
 use crate::Result;
 
 use super::payload::{JsonPayload, MqttPayload};
@@ -20,6 +21,7 @@ pub trait DeviceCollection: Debug {
     self.flatten_devices().into_iter().find(|d| &d.topic(topic.mode()) == topic)
   }
   fn find_device_mut(&mut self, topic: &Topic) -> Option<&mut Device> {
+    println!("{}", topic.to_str());
     self.flatten_devices_mut().into_iter().find(|d| &d.topic(topic.mode()) == topic)
   }
 
@@ -105,6 +107,10 @@ impl<T: DeviceCollection> EffectiveLight for T {
   fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.stop_dim()).collect()
   }
+
+  fn change_state(&mut self, payload: RestApiPayload) -> Vec<(Topic, MqttPayload)> {
+    self.flatten_lights_mut().into_iter().flat_map(|l| l.change_state(payload.clone())).collect()
+  }
 }
 
 pub trait EditableHome {
@@ -125,6 +131,7 @@ pub trait EffectiveLight: Debug {
   fn start_dim_down(&mut self) -> Vec<(Topic, MqttPayload)>;
   fn start_dim_up(&mut self) -> Vec<(Topic, MqttPayload)>;
   fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)>;
+  fn change_state(&mut self, payload: RestApiPayload) -> Vec<(Topic, MqttPayload)>;
 }
 
 pub trait Addressable {

@@ -1,6 +1,8 @@
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request as HyperRequest, Response, Server, StatusCode};
 use serde_json::json;
+use std::borrow::Cow;
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::str::Split;
@@ -77,8 +79,9 @@ impl WebServer {
       return Self::bad_request("Unknown subcommand.");
     }
     let command = command.unwrap();
-    let target = Self::find_topic(url).expect("Error handling.");
-    queue.send(Request::LightCommand(command, target)).unwrap();
+    let payload = Self::transform_query(url);
+    queue.send(Request::LightCommand(command, payload)).unwrap();
+    println!("Response: Success");
     Self::accepted("Success".to_string())
   }
 
@@ -91,14 +94,15 @@ impl WebServer {
     let request = match segments.next() {
       Some("Structure") => Request::Query(Query::Architecture, sender),
       Some("DeviceState") => {
-        let target = Self::find_topic(url).expect("Error handling.");
-        Request::Query(Query::DeviceState(target), sender)
+        let payload = Self::transform_query(url);
+        Request::Query(Query::DeviceState(payload.topic.unwrap()), sender)
       }
       None => return Self::bad_request("Queries need a subcommand."),
       Some(_) => return Self::bad_request("Unknown subcommand."),
     };
     queue.send(request).expect("Error handling");
     let resp = receiver.await.unwrap();
+    println!("Response: {}", resp.to_str());
     Self::accepted(resp.to_str())
   }
 
@@ -116,11 +120,21 @@ impl WebServer {
     response
   }
 
-  fn find_topic(url: &Url) -> Option<Topic> {
-    url
-      .query_pairs()
-      .filter_map(|(k, v)| if k == "topic" { Some(v.to_string()) } else { None })
-      .map(Topic::try_from)
-      .find_map(Result::ok)
+  fn transform_query(url: &Url) -> RestApiPayload {
+    let map: HashMap<Cow<'_, str>, Cow<'_, str>> = url.query_pairs().collect();
+    let topic = map.get("topic").map(|b| Topic::try_from(b.to_string()).unwrap());
+    let val = map.get("value").map(|b| b.parse().unwrap());
+    let hue = map.get("hue").map(|b| b.parse().unwrap());
+    let sat = map.get("saturation").map(|b| b.parse().unwrap());
+    println!("{:?}", RestApiPayload { topic: topic.clone(), val, hue, sat });
+    RestApiPayload { topic, val, hue, sat }
   }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RestApiPayload {
+  pub topic: Option<Topic>,
+  pub val: Option<f64>,
+  pub hue: Option<f64>,
+  pub sat: Option<f64>,
 }

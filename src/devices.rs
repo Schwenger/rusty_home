@@ -207,10 +207,10 @@ impl DeviceModel {
     self.capabilities().contains(&capa)
   }
 
-  pub fn max_brightness(&self) -> i32 {
+  pub fn max_brightness(&self) -> f64 {
     match self {
-      DeviceModel::IkeaDimmable => 254,
-      DeviceModel::HueColor => 254,
+      DeviceModel::IkeaDimmable => 254.0,
+      DeviceModel::HueColor => 254.0,
       DeviceModel::TuyaHumidity
       | DeviceModel::IkeaOutlet
       | DeviceModel::IkeaMultiButton

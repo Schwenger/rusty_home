@@ -1,15 +1,19 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot::Sender;
 
-use crate::{devices::remote::RemoteButton, mqtt::MqttState};
+use crate::{devices::remote::RemoteButton, mqtt::MqttState, web_server::RestApiPayload};
 
 use super::{payload::JsonPayload, topic::Topic};
+
+pub type Additional = HashMap<String, String>;
 
 #[derive(Debug)]
 pub enum Request {
   Query(Query, Sender<JsonPayload>),
   DeviceCommand(DeviceCommand, Topic),
-  LightCommand(LightCommand, Topic),
+  LightCommand(LightCommand, RestApiPayload),
   RemoteAction(RemoteAction),
   HomeEdit(HomeEdit),
   General(General),
@@ -31,6 +35,7 @@ pub enum LightCommand {
   StartDimUp,
   StartDimDown,
   StopDim,
+  ChangeState,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

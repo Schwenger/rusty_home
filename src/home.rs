@@ -84,6 +84,7 @@ impl QueryableHome for Home {
   }
 
   fn query_device(&self, topic: Topic) -> JsonPayload {
+    println!("{}", topic.to_str());
     JsonPayload::from(&self.find_device(&topic).unwrap().query_state())
   }
 }

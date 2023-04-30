@@ -6,6 +6,7 @@ use crate::api::topic::{DeviceKind, Topic, TopicMode};
 use crate::api::traits::{Addressable, DeviceCollection, EffectiveLight, EffectiveLightCollection};
 use crate::common::Scalar;
 use crate::mqtt::{MqttColor, MqttState};
+use crate::web_server::RestApiPayload;
 
 use super::{Capability, Device, DeviceModel, DeviceTrait};
 
@@ -122,6 +123,24 @@ impl EffectiveLight for Light {
       (self.topic(TopicMode::Set), MqttPayload::new().with_stop_dimming().with_transition()),
       (self.topic(TopicMode::Set), MqttPayload::new().with_state_query()),
     ]
+  }
+
+  fn change_state(&mut self, payload: RestApiPayload) -> Vec<(Topic, MqttPayload)> {
+    let mqtt = if payload.hue.is_some() {
+      assert!(payload.sat.is_some());
+      assert!(payload.val.is_some());
+      self.state.color = Hsv::new(
+        payload.hue.unwrap() as f32,
+        payload.sat.unwrap() as f32,
+        payload.val.unwrap() as f32,
+      );
+      MqttPayload::new().with_color_change(self.state.color)
+    } else if let Some(val) = payload.val {
+      MqttPayload::new().with_brightness_change(val.into())
+    } else {
+      return vec![];
+    };
+    vec![(self.topic(TopicMode::Set), mqtt)]
   }
 }
 

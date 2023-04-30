@@ -31,6 +31,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+  std::env::set_var("RUST_BACKTRACE", "1");
   let controller: Controller = GlobalConfig::read()?.try_into().await?;
   controller.run().await;
   Ok(())

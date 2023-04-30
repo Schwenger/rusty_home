@@ -41,11 +41,23 @@ impl Addressable for Room {
 
 impl DeviceCollection for Room {
   fn flatten_devices(&self) -> Vec<&Device> {
-    self.lights.flatten_devices().into_iter().chain(self.remotes.iter()).collect()
+    self
+      .lights
+      .flatten_devices()
+      .into_iter()
+      .chain(self.remotes.iter())
+      .chain(self.sensors.iter())
+      .collect()
   }
 
   fn flatten_devices_mut(&mut self) -> Vec<&mut Device> {
-    self.lights.flatten_devices_mut().into_iter().chain(self.remotes.iter_mut()).collect()
+    self
+      .lights
+      .flatten_devices_mut()
+      .into_iter()
+      .chain(self.remotes.iter_mut())
+      .chain(self.sensors.iter_mut())
+      .collect()
   }
 }
 

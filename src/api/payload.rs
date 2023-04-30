@@ -1,6 +1,7 @@
 use crate::devices::DeviceModel;
 use crate::Error;
 use crate::Result;
+use palette::IntoColor;
 use palette::{FromColor, Hsv, Yxy};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -59,8 +60,18 @@ impl MqttPayload {
     self
   }
 
+  pub fn with_color_change(mut self, color: Hsv) -> Self {
+    let color: Yxy = color.into_color();
+    let json_color = json!({
+      "x": color.x,
+      "y": color.y,
+    });
+    self.insert("color", json_color);
+    self.with_brightness(json!(color.luma * 254.0))
+  }
+
   pub fn with_brightness_change(self, val: Scalar) -> Self {
-    self.with_brightness(json!(val.inner()))
+    self.with_brightness(json!(val.inner() * 254.0))
   }
 
   fn with_brightness(mut self, val: SerdeValue) -> Self {

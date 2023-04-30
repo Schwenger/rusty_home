@@ -1,10 +1,11 @@
-use super::{
-  executor::ExecutorLogic, request::LightCommand, topic::Topic, traits::EffectiveLightCollection,
-};
+use crate::web_server::RestApiPayload;
+
+use super::{executor::ExecutorLogic, request::LightCommand, traits::EffectiveLightCollection};
 
 impl ExecutorLogic {
-  pub(super) async fn execute_light(&mut self, cmd: LightCommand, target: Topic) {
-    println!("Executing for light {}", target.to_str());
+  pub(super) async fn execute_light(&mut self, cmd: LightCommand, adds: RestApiPayload) {
+    let target = adds.topic.clone().unwrap();
+    println!("Executing {:?} for light {}", cmd, target.to_str());
     let light = self.home.find_effective_light_mut(&target).expect("Implement error handling.");
     let payloads = match cmd {
       LightCommand::TurnOn => light.turn_on(),
@@ -15,6 +16,7 @@ impl ExecutorLogic {
       LightCommand::StartDimUp => light.start_dim_up(),
       LightCommand::StartDimDown => light.start_dim_down(),
       LightCommand::StopDim => light.stop_dim(),
+      LightCommand::ChangeState => light.change_state(adds),
     };
     self.send_mqtt_payloads(payloads).await;
   }

@@ -140,7 +140,7 @@ impl MqttClient {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
 pub struct MqttState {
   #[serde(default)]
-  brightness: Option<i32>,
+  brightness: Option<f64>,
   #[serde(default)]
   pub color: Option<MqttColor>,
   #[serde(default)]
@@ -152,12 +152,12 @@ pub struct MqttState {
 }
 
 impl MqttState {
-  pub fn brightness(&self, max: i32) -> Option<Scalar> {
-    self.brightness.map(|b| (b as f64 / max as f64).into())
+  pub fn brightness(&self, max: f64) -> Option<Scalar> {
+    self.brightness.map(|b| (b / max).into())
   }
 
-  pub fn set_brightness(&mut self, val: Scalar, max: i32) {
-    self.brightness = Some((val.inner() * (max as f64)) as i32)
+  pub fn set_brightness(&mut self, val: Scalar, max: f64) {
+    self.brightness = Some(val.inner() * (max))
   }
 }
 
@@ -168,17 +168,17 @@ pub struct MqttColor {
   #[serde(skip_serializing)]
   y: f32,
   #[serde(skip_deserializing)]
-  hue: i32,
+  hue: f64,
   #[serde(skip_deserializing)]
-  saturation: i32,
+  saturation: f64,
 }
 
 impl MqttColor {
   pub fn new(hsv: Hsv) -> Self {
     use std::f32::consts::PI;
-    let hue = ((hsv.hue.into_degrees() + PI) * 360.0 / (2.0 * PI)) as i32;
-    let sat = (hsv.saturation * 100.0) as i32;
-    MqttColor { x: 0.0, y: 0.0, hue, saturation: sat }
+    let hue = (hsv.hue.into_degrees() + PI) * 360.0 / (2.0 * PI);
+    let sat = hsv.saturation * 100.0;
+    MqttColor { x: 0.0, y: 0.0, hue: hue as f64, saturation: sat as f64 }
   }
   pub fn x_y(&self) -> (f32, f32) {
     (self.x, self.y)

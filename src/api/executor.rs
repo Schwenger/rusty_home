@@ -37,7 +37,7 @@ impl ExecutorLogic {
   async fn process(&mut self, req: Request) {
     match req {
       Request::Query(query, resp) => self.respond(query, resp).await,
-      Request::LightCommand(cmd, target) => self.execute_light(cmd, target).await,
+      Request::LightCommand(cmd, additional) => self.execute_light(cmd, additional).await,
       Request::HomeEdit(he) => self.edit_home(he).await,
       Request::General(general) => self.execute_general(general).await,
       Request::RemoteAction(ra) => self.remote_action(ra).await,
@@ -46,6 +46,7 @@ impl ExecutorLogic {
   }
 
   pub(super) async fn send_mqtt_payloads(&mut self, payloads: Vec<(Topic, MqttPayload)>) {
+    println!("Sending mqtt payloads.");
     stream::iter(payloads)
       .for_each_concurrent(None, |(t, p)| async { self.client.lock().await.publish(t, p).await })
       .await;
