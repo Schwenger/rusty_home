@@ -9,6 +9,7 @@ use crate::{
     topic::{Topic, TopicMode},
     traits::{Addressable, JsonConvertible},
   },
+  common::Scalar,
   devices::{
     remote::{IkeaDimmer, RemoteButton},
     Device,
@@ -16,6 +17,7 @@ use crate::{
   Result,
 };
 use paho_mqtt::{AsyncClient, AsyncReceiver, CreateOptionsBuilder, Message, QOS_1};
+use palette::Hsv;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::{mpsc::UnboundedSender, Mutex};
@@ -138,9 +140,9 @@ impl MqttClient {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
 pub struct MqttState {
   #[serde(default)]
-  pub brightness: Option<i32>,
+  brightness: Option<i32>,
   #[serde(default)]
-  pub color: Option<MqttColorXy>,
+  pub color: Option<MqttColor>,
   #[serde(default)]
   pub state: Option<MqttOnOff>,
   #[serde(default)]
@@ -149,10 +151,38 @@ pub struct MqttState {
   pub humidity: Option<f64>,
 }
 
+impl MqttState {
+  pub fn brightness(&self, max: i32) -> Option<Scalar> {
+    self.brightness.map(|b| (b as f64 / max as f64).into())
+  }
+
+  pub fn set_brightness(&mut self, val: Scalar, max: i32) {
+    self.brightness = Some((val.inner() * (max as f64)) as i32)
+  }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
-pub struct MqttColorXy {
-  pub x: f32,
-  pub y: f32,
+pub struct MqttColor {
+  #[serde(skip_serializing)]
+  x: f32,
+  #[serde(skip_serializing)]
+  y: f32,
+  #[serde(skip_deserializing)]
+  hue: i32,
+  #[serde(skip_deserializing)]
+  saturation: i32,
+}
+
+impl MqttColor {
+  pub fn new(hsv: Hsv) -> Self {
+    use std::f32::consts::PI;
+    let hue = ((hsv.hue.into_degrees() + PI) * 360.0 / (2.0 * PI)) as i32;
+    let sat = (hsv.saturation * 100.0) as i32;
+    MqttColor { x: 0.0, y: 0.0, hue, saturation: sat }
+  }
+  pub fn x_y(&self) -> (f32, f32) {
+    (self.x, self.y)
+  }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

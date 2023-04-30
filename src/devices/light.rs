@@ -5,7 +5,7 @@ use crate::api::payload::MqttPayload;
 use crate::api::topic::{DeviceKind, Topic, TopicMode};
 use crate::api::traits::{Addressable, DeviceCollection, EffectiveLight, EffectiveLightCollection};
 use crate::common::Scalar;
-use crate::mqtt::{MqttColorXy, MqttState};
+use crate::mqtt::{MqttColor, MqttState};
 
 use super::{Capability, Device, DeviceModel, DeviceTrait};
 
@@ -195,17 +195,24 @@ impl Default for LightState {
 
 impl LightState {
   pub fn with_mqtt_state(&mut self, model: DeviceModel, state: MqttState) {
+    println!("\n\nwith mqtt state\n");
+    println!("received: {:?}", state);
     if model.capable_of(Capability::State) {
       self.on = state.state.unwrap().into();
     }
     if model.capable_of(Capability::Brightness) {
-      self.color.value = (state.brightness.unwrap() / model.max_brightness()) as f32;
+      self.color.value = state.brightness(model.max_brightness()).unwrap().inner() as f32;
     }
     if model.capable_of(Capability::Color) {
       let color = state.color.unwrap();
-      let color = Yxy::new(color.x, color.y, self.brightness().inner() as f32);
-      let color: Hsv = color.into_color();
-      self.color = color;
+      let (x, y) = color.x_y();
+      let val = self.brightness().inner() as f32;
+      self.color = Yxy::new(x, y, val).into_color();
+      println!(
+        "{:?}, hue: {}, val: {val}",
+        self.color,
+        self.color.hue.into_radians() + std::f32::consts::PI,
+      );
     }
   }
 
@@ -215,12 +222,10 @@ impl LightState {
       res.state = Some(self.on.into());
     }
     if model.capable_of(Capability::Brightness) {
-      let v = self.brightness().inner() * model.max_brightness() as f64;
-      res.brightness = Some(v as i32);
+      res.set_brightness(self.brightness(), model.max_brightness());
     }
     if model.capable_of(Capability::Color) {
-      let xy: Yxy = self.color.into_color();
-      res.color = Some(MqttColorXy { x: xy.x, y: xy.y });
+      res.color = Some(MqttColor::new(self.color));
     }
     res
   }
