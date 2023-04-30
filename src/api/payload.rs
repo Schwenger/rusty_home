@@ -41,7 +41,6 @@ impl MqttPayload {
     self
   }
 
-  #[allow(dead_code)]
   pub fn with_state_query(self) -> Self {
     self.with_state(json!(""))
   }
@@ -53,11 +52,6 @@ impl MqttPayload {
   fn with_state(mut self, val: SerdeValue) -> Self {
     self.insert("state", val);
     self
-  }
-
-  #[allow(dead_code)]
-  pub fn with_brightness_query(self) -> Self {
-    self.with_brightness(json!(""))
   }
 
   pub fn with_brightness_change(self, val: Scalar) -> Self {
