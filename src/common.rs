@@ -7,8 +7,8 @@ use serde_json::{json, Value};
 pub struct Scalar(pub(self) f64);
 impl From<f64> for Scalar {
   fn from(value: f64) -> Self {
-    assert!((0.0..=1.0).contains(&value), "Value {value} is not a scalar.");
-    Self(value)
+    assert!((-0.01..=1.1).contains(&value), "Value {value} is not a scalar.");
+    Self::bounded(value)
   }
 }
 
@@ -72,18 +72,18 @@ impl MulAssign for Scalar {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
-pub enum Tertiary<T: std::fmt::Debug + Clone + Serialize> {
+#[derive(Debug, Clone, Serialize, Default, PartialEq)]
+pub enum Tertiary<T: std::fmt::Debug + Clone + Serialize + PartialEq> {
   Some(T),
   #[default]
   None,
   Query,
 }
 
-impl<T: std::fmt::Debug + Clone + Serialize> Tertiary<T> {
+impl<T: std::fmt::Debug + Clone + Serialize + PartialEq> Tertiary<T> {
   pub fn map<R, F>(self, f: F) -> Tertiary<R>
   where
-    R: std::fmt::Debug + Clone + Serialize,
+    R: std::fmt::Debug + Clone + Serialize + PartialEq,
     F: FnOnce(T) -> R,
   {
     match self {

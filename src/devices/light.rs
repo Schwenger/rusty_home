@@ -210,7 +210,7 @@ impl LightState {
     if model.capable_of(Capability::State) {
       res = res.with_state(Some(self.on));
     }
-    if model.capable_of(Capability::Brightness) {
+    if model.capable_of(Capability::Brightness) && !model.capable_of(Capability::Color) {
       res = res.with_value(Some(self.color.val()));
     }
     if model.capable_of(Capability::Color) {

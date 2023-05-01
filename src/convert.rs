@@ -7,7 +7,7 @@ use crate::{
   common::{Scalar, Tertiary},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
 
 pub struct Hue {
   inner: Scalar,
@@ -35,9 +35,13 @@ impl Hue {
   pub fn to_rest(&self) -> Scalar {
     self.inner
   }
+
+  pub fn to_mqtt(&self) -> f64 {
+    self.inner.inner() * 360.0
+  }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Sat {
   inner: Scalar,
 }
@@ -62,9 +66,13 @@ impl Sat {
   pub fn to_rest(&self) -> Scalar {
     self.inner
   }
+
+  pub fn to_mqtt(&self) -> f64 {
+    self.inner.inner() * 100.0
+  }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Val {
   inner: Scalar,
 }
@@ -220,17 +228,21 @@ impl StateToMqtt {
       ("brightness", self.brightness.map(|v| v.to_mqtt()).to_json())
     };
     if let Some(json) = brightness {
+      assert_eq!(self.color, None);
       obj.as_object_mut().unwrap().insert(String::from(label), json);
     }
 
     if let Some(color) = self.color {
       let mut col_obj = json!({});
-      // Currently, rest/mqtt is irrelevant, output is identical.
-      if let Some(hue) = color.hue {
-        col_obj.as_object_mut().unwrap().insert(String::from("hue"), json!(hue));
-      }
-      if let Some(sat) = color.sat {
-        col_obj.as_object_mut().unwrap().insert(String::from("sat"), json!(sat));
+      if rest {
+        col_obj.as_object_mut().unwrap().insert(String::from("hue"), json!(color.hue.to_rest()));
+        col_obj.as_object_mut().unwrap().insert(String::from("sat"), json!(color.sat.to_rest()));
+        // Value on object level.
+        obj.as_object_mut().unwrap().insert(String::from("val"), json!(color.val.to_rest()));
+      } else {
+        col_obj.as_object_mut().unwrap().insert(String::from("h"), json!(color.hue.to_mqtt()));
+        col_obj.as_object_mut().unwrap().insert(String::from("s"), json!(color.sat.to_mqtt()));
+        col_obj.as_object_mut().unwrap().insert(String::from("v"), json!(color.val.to_mqtt()));
       }
       obj.as_object_mut().unwrap().insert(String::from("color"), col_obj);
     }
@@ -267,7 +279,6 @@ impl StateToMqtt {
   }
 
   pub fn with_color_change(mut self, color: &HsvColor) -> Self {
-    self = self.with_value(Some(color.val()));
     self.color = Some(MqttColorOut::from_hsv(color));
     self
   }
@@ -315,17 +326,16 @@ impl StateToMqtt {
   }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Default)]
+#[derive(Debug, Clone, Copy, Serialize, Default, PartialEq)]
 pub struct MqttColorOut {
-  hue: Option<f64>,
-  sat: Option<f64>,
+  hue: Hue,
+  sat: Sat,
+  val: Val,
 }
 
 impl MqttColorOut {
   pub fn from_hsv(color: &HsvColor) -> Self {
-    let hue = color.hue().to_rest().inner();
-    let sat = color.sat().to_rest().inner();
-    MqttColorOut { hue: Some(hue), sat: Some(sat) }
+    MqttColorOut { hue: color.hue(), sat: color.sat(), val: color.val() }
   }
 }
 
