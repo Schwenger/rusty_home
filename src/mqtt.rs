@@ -66,7 +66,7 @@ impl MqttReceiver {
 impl MqttClient {
   pub async fn publish(&self, topic: Topic, payload: StateToMqtt) {
     assert_ne!(topic.mode(), TopicMode::Blank);
-    let payload = payload.to_json_str();
+    let payload = payload.to_json_str(false);
     println!("Sent: {} to {}", &payload, topic.to_str());
     let msg = Message::new(topic.to_str(), payload, QOS_1);
     if self.client.publish(msg).await.is_err() {

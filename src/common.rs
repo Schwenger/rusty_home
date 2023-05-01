@@ -81,6 +81,17 @@ pub enum Tertiary<T: std::fmt::Debug + Clone + Serialize> {
 }
 
 impl<T: std::fmt::Debug + Clone + Serialize> Tertiary<T> {
+  pub fn map<R, F>(self, f: F) -> Tertiary<R>
+  where
+    R: std::fmt::Debug + Clone + Serialize,
+    F: FnOnce(T) -> R,
+  {
+    match self {
+      Tertiary::None => Tertiary::None,
+      Tertiary::Query => Tertiary::Query,
+      Tertiary::Some(x) => Tertiary::Some(f(x)),
+    }
+  }
   pub fn to_json(&self) -> Option<Value> {
     match self {
       Tertiary::None => None,

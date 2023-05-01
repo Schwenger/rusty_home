@@ -6,7 +6,7 @@ impl ExecutorLogic {
     let res = match to {
       Query::Architecture => self.home.query_architecture(),
       Query::DeviceState(target) => {
-        JsonPayload::from_string(self.home.query_device(target).to_json_str())
+        JsonPayload::from_string(self.home.query_device(target).to_json_str(true))
       }
     };
     over.send(res).expect("Failed to send response.");

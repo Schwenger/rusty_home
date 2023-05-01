@@ -209,7 +209,7 @@ pub enum MqttOnOff {
 
 #[derive(Debug, Clone, Default)]
 pub struct StateToMqtt {
-  brightness: Tertiary<f64>,
+  brightness: Tertiary<Val>,
   color: Option<MqttColorOut>,
   state: Tertiary<MqttOnOff>,
   transition: Option<i8>,
@@ -223,43 +223,62 @@ impl StateToMqtt {
   const TRANSITION: i8 = 3;
   const DIM_SPEED: i8 = 40;
 
-  pub fn to_json_str(self) -> String {
+  pub fn to_json_str(self, rest: bool) -> String {
     let mut obj = json!({});
-    if let Some(json) = self.brightness.to_json() {
+
+    let brightness = if rest {
+      self.brightness.map(|v| v.to_rest()).to_json()
+    } else {
+      self.brightness.map(|v| v.to_mqtt()).to_json()
+    };
+    if let Some(json) = brightness {
       obj.as_object_mut().unwrap().insert(String::from("brightness"), json);
     }
+
     if let Some(color) = self.color {
       let mut col_obj = json!({});
-      if let Some(x) = color.x {
-        col_obj.as_object_mut().unwrap().insert(String::from("x"), json!(x));
-      }
-      if let Some(y) = color.y {
-        col_obj.as_object_mut().unwrap().insert(String::from("y"), json!(y));
+      if rest {
+        if let Some(hue) = color.hue {
+          col_obj.as_object_mut().unwrap().insert(String::from("hue"), json!(hue));
+        }
+        if let Some(sat) = color.sat {
+          col_obj.as_object_mut().unwrap().insert(String::from("sat"), json!(sat));
+        }
+      } else {
+        if let Some(x) = color.x {
+          col_obj.as_object_mut().unwrap().insert(String::from("x"), json!(x));
+        }
+        if let Some(y) = color.y {
+          col_obj.as_object_mut().unwrap().insert(String::from("y"), json!(y));
+        }
       }
       obj.as_object_mut().unwrap().insert(String::from("color"), col_obj);
     }
-    if let Some(json) = self.brightness.to_json() {
-      // color
-      obj.as_object_mut().unwrap().insert(String::from("brightness"), json);
-    }
+
     if let Some(json) = self.state.to_json() {
       obj.as_object_mut().unwrap().insert(String::from("state"), json);
     }
+
     if let Some(v) = self.transition {
       obj.as_object_mut().unwrap().insert(String::from("transition"), json!(v));
     }
+
     if let Some(v) = self.brightness_move {
       obj.as_object_mut().unwrap().insert(String::from("brightness_move"), json!(v));
     }
+
     if self.battery.is_some() {
       obj.as_object_mut().unwrap().insert(String::from("battery"), json!(""));
     }
+
     if let Some(v) = self.humidity {
       obj.as_object_mut().unwrap().insert(String::from("humidity"), json!(v));
     }
+
     if let Some(v) = self.temperature {
       obj.as_object_mut().unwrap().insert(String::from("temperature"), json!(v));
     }
+
     obj.to_string()
   }
 
@@ -269,9 +288,7 @@ impl StateToMqtt {
 
   pub fn with_color_change(mut self, color: HsvColor) -> Self {
     self = self.with_value(Some(color.val()));
-    let x = Some(color.x().inner() as f32);
-    let y = Some(color.y().inner() as f32);
-    self.color = Some(MqttColorOut { x, y });
+    self.color = Some(MqttColorOut::from_hsv(color));
     self
   }
 
@@ -286,7 +303,7 @@ impl StateToMqtt {
 
   pub fn with_value(mut self, val: Option<Val>) -> Self {
     self.brightness = match val {
-      Some(val) => Tertiary::Some(val.to_mqtt()),
+      Some(val) => Tertiary::Some(val),
       None => Tertiary::Query,
     };
     self
@@ -322,12 +339,16 @@ impl StateToMqtt {
 pub struct MqttColorOut {
   x: Option<f32>,
   y: Option<f32>,
+  hue: Option<f64>,
+  sat: Option<f64>,
 }
 
 impl MqttColorOut {
   pub fn from_hsv(color: HsvColor) -> Self {
+    let hue = color.hue().to_rest().inner();
+    let sat = color.sat().to_rest().inner();
     let xy: Yxy = color.as_color();
-    MqttColorOut { x: Some(xy.x), y: Some(xy.y) }
+    MqttColorOut { x: Some(xy.x), y: Some(xy.y), hue: Some(hue), sat: Some(sat) }
   }
 }
 
