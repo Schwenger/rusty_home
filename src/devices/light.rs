@@ -17,12 +17,6 @@ pub struct Light {
   state: LightState,
 }
 
-impl Light {
-  pub fn state(&self) -> LightState {
-    self.state
-  }
-}
-
 impl DeviceTrait for Light {
   fn virtual_kind(&self) -> DeviceKind {
     self.pseudo_kind.unwrap_or(DeviceKind::Light)
@@ -121,8 +115,9 @@ impl EffectiveLight for Light {
       assert!(payload.val.is_some());
       self.state.color =
         HsvColor::new(payload.hue.unwrap(), payload.sat.unwrap(), payload.val.unwrap());
-      StateToMqtt::empty().with_color_change(self.state.color).with_transition()
+      StateToMqtt::empty().with_color_change(&self.state.color).with_transition()
     } else if let Some(val) = payload.val {
+      self.state.color.with_val(val);
       StateToMqtt::empty().with_value(Some(val)).with_transition()
     } else {
       return vec![];
@@ -173,7 +168,7 @@ impl EffectiveLightCollection for LightGroup {
     if let Some(res) = self.atomics.iter().find(|l| &l.topic(topic.mode()) == topic) {
       return Some(res.as_light().unwrap());
     }
-    self.subgroups.iter().flat_map(|grp| grp.find_effective_light(topic)).last()
+    self.subgroups.iter().filter_map(|grp| grp.find_effective_light(topic)).last()
   }
 
   fn find_effective_light_mut(&mut self, topic: &Topic) -> Option<&mut dyn EffectiveLight> {
@@ -187,7 +182,8 @@ impl EffectiveLightCollection for LightGroup {
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize, Default)]
+#[allow(missing_copy_implementations)] // Avoid accidental copying.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Default)]
 pub struct LightState {
   pub on: bool,
   pub color: HsvColor,
@@ -218,7 +214,7 @@ impl LightState {
       res = res.with_value(Some(self.color.val()));
     }
     if model.capable_of(Capability::Color) {
-      res = res.with_color_change(self.color);
+      res = res.with_color_change(&self.color);
     }
     res
   }

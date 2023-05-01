@@ -11,7 +11,6 @@
     rustdoc::broken_intra_doc_links,
 )]
 
-use common::Scalar;
 use config::GlobalConfig;
 use controller::Controller;
 use error::HomeBaseError;

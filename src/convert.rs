@@ -1,4 +1,4 @@
-use palette::{FromColor, Hsv, IntoColor, Yxy};
+use palette::{FromColor, Hsv, IntoColor};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -24,6 +24,10 @@ impl Hue {
     Self { inner: Scalar::from(val) }
   }
 
+  pub fn from_mqtt(val: f64) -> Self {
+    Self { inner: Scalar::from(val / 360.0) }
+  }
+
   pub fn to_hsv(&self) -> f32 {
     self.inner.inner() as f32
   }
@@ -45,6 +49,10 @@ impl Sat {
 
   pub fn from_rest(val: f64) -> Self {
     Self { inner: Scalar::from(val) }
+  }
+
+  pub fn from_mqtt(val: f64) -> Self {
+    Self { inner: Scalar::from(val / 100.0) }
   }
 
   pub fn to_hsv(&self) -> f32 {
@@ -87,7 +95,8 @@ impl Val {
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[allow(missing_copy_implementations)] // Avoid accidental copying.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct HsvColor {
   hue: Hue,
   sat: Sat,
@@ -96,21 +105,13 @@ pub struct HsvColor {
 
 impl Default for HsvColor {
   fn default() -> Self {
-    Self { hue: Hue::from_hsv_radians(0.0), sat: Sat::from_hsv(0.0), val: Val::from_hsv(1.0) }
+    Self { hue: Hue::from_hsv_radians(0.0), sat: Sat::from_hsv(0.0), val: Val::from_hsv(0.33) }
   }
 }
 
 impl HsvColor {
   pub fn new(hue: Hue, sat: Sat, val: Val) -> Self {
     Self { hue, sat, val }
-  }
-
-  pub fn new_xy(x: Scalar, y: Scalar, val: Val) -> Self {
-    let hsv: Hsv = Yxy::new(x.inner() as f32, y.inner() as f32, val.to_hsv()).into_color();
-    let hue = Hue::from_hsv_radians(hsv.hue.into_radians());
-    let sat = Sat::from_hsv(hsv.saturation);
-    let val = Val::from_hsv(hsv.value);
-    Self::new(hue, sat, val)
   }
 
   pub fn as_color<T: FromColor<Hsv>>(&self) -> T {
@@ -140,16 +141,6 @@ impl HsvColor {
   pub fn with_hue(&mut self, hue: Hue) {
     self.hue = hue
   }
-
-  pub fn x(&self) -> Scalar {
-    let xyy: Yxy = self.as_color();
-    Scalar::from(xyy.x as f64)
-  }
-
-  pub fn y(&self) -> Scalar {
-    let xyy: Yxy = self.as_color();
-    Scalar::from(xyy.y as f64)
-  }
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq)]
@@ -157,7 +148,7 @@ pub struct StateFromMqtt {
   #[serde(default)]
   brightness: Option<f64>,
   #[serde(default)]
-  color: Option<MqttColor>,
+  color: Option<MqttColorIn>,
   #[serde(default)]
   state: Option<MqttOnOff>,
   #[serde(default)]
@@ -166,38 +157,35 @@ pub struct StateFromMqtt {
   pub humidity: Option<f64>,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq)]
+pub struct MqttColorIn {
+  hue: f64,
+  saturation: f64,
+}
+
 impl StateFromMqtt {
   pub fn hsv_color(&self) -> Option<HsvColor> {
-    if self.val().is_none() || self.x().is_none() || self.y().is_none() {
+    if self.val().is_none() || self.hue().is_none() || self.sat().is_none() {
       return None;
     }
-    let x: Scalar = self.x().unwrap().into();
-    let y: Scalar = self.y().unwrap().into();
-    let val = self.val().unwrap();
-    Some(HsvColor::new_xy(x, y, val))
+    Some(HsvColor::new(self.hue().unwrap(), self.sat().unwrap(), self.val().unwrap()))
   }
 
   pub fn val(&self) -> Option<Val> {
     self.brightness.map(Val::from_mqtt)
   }
 
+  pub fn hue(&self) -> Option<Hue> {
+    self.color.map(|c| Hue::from_mqtt(c.hue))
+  }
+
+  pub fn sat(&self) -> Option<Sat> {
+    self.color.map(|c| Sat::from_mqtt(c.saturation))
+  }
+
   pub fn state(&self) -> Option<bool> {
     self.state.map(|v| v == MqttOnOff::On)
   }
-
-  fn x(&self) -> Option<f64> {
-    self.color.map(|c| c.x as f64)
-  }
-
-  fn y(&self) -> Option<f64> {
-    self.color.map(|c| c.y as f64)
-  }
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq)]
-struct MqttColor {
-  x: f32,
-  y: f32,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -237,20 +225,12 @@ impl StateToMqtt {
 
     if let Some(color) = self.color {
       let mut col_obj = json!({});
-      if rest {
-        if let Some(hue) = color.hue {
-          col_obj.as_object_mut().unwrap().insert(String::from("hue"), json!(hue));
-        }
-        if let Some(sat) = color.sat {
-          col_obj.as_object_mut().unwrap().insert(String::from("sat"), json!(sat));
-        }
-      } else {
-        if let Some(x) = color.x {
-          col_obj.as_object_mut().unwrap().insert(String::from("x"), json!(x));
-        }
-        if let Some(y) = color.y {
-          col_obj.as_object_mut().unwrap().insert(String::from("y"), json!(y));
-        }
+      // Currently, rest/mqtt is irrelevant, output is identical.
+      if let Some(hue) = color.hue {
+        col_obj.as_object_mut().unwrap().insert(String::from("hue"), json!(hue));
+      }
+      if let Some(sat) = color.sat {
+        col_obj.as_object_mut().unwrap().insert(String::from("sat"), json!(sat));
       }
       obj.as_object_mut().unwrap().insert(String::from("color"), col_obj);
     }
@@ -286,7 +266,7 @@ impl StateToMqtt {
     Self::default()
   }
 
-  pub fn with_color_change(mut self, color: HsvColor) -> Self {
+  pub fn with_color_change(mut self, color: &HsvColor) -> Self {
     self = self.with_value(Some(color.val()));
     self.color = Some(MqttColorOut::from_hsv(color));
     self
@@ -337,18 +317,15 @@ impl StateToMqtt {
 
 #[derive(Debug, Clone, Copy, Serialize, Default)]
 pub struct MqttColorOut {
-  x: Option<f32>,
-  y: Option<f32>,
   hue: Option<f64>,
   sat: Option<f64>,
 }
 
 impl MqttColorOut {
-  pub fn from_hsv(color: HsvColor) -> Self {
+  pub fn from_hsv(color: &HsvColor) -> Self {
     let hue = color.hue().to_rest().inner();
     let sat = color.sat().to_rest().inner();
-    let xy: Yxy = color.as_color();
-    MqttColorOut { x: Some(xy.x), y: Some(xy.y), hue: Some(hue), sat: Some(sat) }
+    MqttColorOut { hue: Some(hue), sat: Some(sat) }
   }
 }
 
