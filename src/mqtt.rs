@@ -2,14 +2,13 @@ use std::{borrow::Borrow, sync::Arc, thread, time::Duration};
 
 use crate::{
   api::{
-    payload::MqttPayload,
     request::RemoteAction,
     request::{DeviceCommand, Request},
     topic::TopicKind,
     topic::{Topic, TopicMode},
-    traits::{Addressable, JsonConvertible},
+    traits::Addressable,
   },
-  common::Scalar,
+  convert::StateToMqtt,
   devices::{
     remote::{IkeaDimmer, RemoteButton},
     Device,
@@ -17,8 +16,6 @@ use crate::{
   Result,
 };
 use paho_mqtt::{AsyncClient, AsyncReceiver, CreateOptionsBuilder, Message, QOS_1};
-use palette::Hsv;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::{mpsc::UnboundedSender, Mutex};
 
@@ -67,9 +64,9 @@ impl MqttReceiver {
 }
 
 impl MqttClient {
-  pub async fn publish(&self, topic: Topic, payload: MqttPayload) {
+  pub async fn publish(&self, topic: Topic, payload: StateToMqtt) {
     assert_ne!(topic.mode(), TopicMode::Blank);
-    let payload = payload.to_json().to_str();
+    let payload = payload.to_json_str();
     println!("Sent: {} to {}", &payload, topic.to_str());
     let msg = Message::new(topic.to_str(), payload, QOS_1);
     if self.client.publish(msg).await.is_err() {
@@ -134,76 +131,5 @@ impl MqttClient {
     if let Err(err) = self.client.disconnect(None).await {
       eprintln!("Failed to disconnect with error: {err}.")
     }
-  }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
-pub struct MqttState {
-  #[serde(default)]
-  brightness: Option<f64>,
-  #[serde(default)]
-  pub color: Option<MqttColor>,
-  #[serde(default)]
-  pub state: Option<MqttOnOff>,
-  #[serde(default)]
-  pub temperature: Option<f64>,
-  #[serde(default)]
-  pub humidity: Option<f64>,
-}
-
-impl MqttState {
-  pub fn brightness(&self, max: f64) -> Option<Scalar> {
-    self.brightness.map(|b| (b / max).into())
-  }
-
-  pub fn set_brightness(&mut self, val: Scalar, max: f64) {
-    self.brightness = Some(val.inner() * (max))
-  }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
-pub struct MqttColor {
-  #[serde(skip_serializing)]
-  x: f32,
-  #[serde(skip_serializing)]
-  y: f32,
-  #[serde(skip_deserializing)]
-  hue: f64,
-  #[serde(skip_deserializing)]
-  saturation: f64,
-}
-
-impl MqttColor {
-  pub fn new(hsv: Hsv) -> Self {
-    use std::f32::consts::PI;
-    let hue = (hsv.hue.into_degrees() + PI) * 360.0 / (2.0 * PI);
-    let sat = hsv.saturation * 100.0;
-    MqttColor { x: 0.0, y: 0.0, hue: hue as f64, saturation: sat as f64 }
-  }
-  pub fn x_y(&self) -> (f32, f32) {
-    (self.x, self.y)
-  }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum MqttOnOff {
-  On,
-  Off,
-}
-
-impl From<bool> for MqttOnOff {
-  fn from(value: bool) -> Self {
-    if value {
-      MqttOnOff::On
-    } else {
-      MqttOnOff::Off
-    }
-  }
-}
-
-impl From<MqttOnOff> for bool {
-  fn from(val: MqttOnOff) -> Self {
-    val == MqttOnOff::On
   }
 }

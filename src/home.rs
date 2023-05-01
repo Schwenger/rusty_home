@@ -11,6 +11,7 @@ use crate::{
       QueryableHome, ReadWriteHome,
     },
   },
+  convert::StateToMqtt,
   devices::{Device, DeviceTrait},
   Result,
 };
@@ -83,8 +84,8 @@ impl QueryableHome for Home {
     JsonPayload::from(self)
   }
 
-  fn query_device(&self, topic: Topic) -> JsonPayload {
+  fn query_device(&self, topic: Topic) -> StateToMqtt {
     println!("{}", topic.to_str());
-    JsonPayload::from(&self.find_device(&topic).unwrap().query_state())
+    self.find_device(&topic).unwrap().query_state()
   }
 }

@@ -21,6 +21,9 @@ impl JsonPayload {
   pub fn inner(&self) -> &str {
     &self.0
   }
+  pub fn from_string(inner: String) -> Self {
+    Self(inner)
+  }
   pub fn to_str(&self) -> String {
     String::from(self.inner())
   }

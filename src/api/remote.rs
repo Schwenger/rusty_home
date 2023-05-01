@@ -1,4 +1,4 @@
-use crate::web_server::RestApiPayload;
+use crate::convert::RestApiPayload;
 
 use super::{executor::ExecutorLogic, request::RemoteAction, traits::DeviceCollection};
 

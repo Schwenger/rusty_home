@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot::Sender;
 
-use crate::{devices::remote::RemoteButton, mqtt::MqttState, web_server::RestApiPayload};
+use crate::{convert::RestApiPayload, convert::StateFromMqtt, devices::remote::RemoteButton};
 
 use super::{payload::JsonPayload, topic::Topic};
 
@@ -40,7 +40,7 @@ pub enum LightCommand {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum DeviceCommand {
-  UpdateState(MqttState),
+  UpdateState(StateFromMqtt),
   QueryUpdate,
 }
 

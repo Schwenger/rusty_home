@@ -1,12 +1,8 @@
-use palette::{DarkenAssign, Hsv, IntoColor, LightenAssign, Yxy};
 use serde::{Deserialize, Serialize};
 
-use crate::api::payload::MqttPayload;
 use crate::api::topic::{DeviceKind, Topic, TopicMode};
 use crate::api::traits::{Addressable, DeviceCollection, EffectiveLight, EffectiveLightCollection};
-use crate::common::Scalar;
-use crate::mqtt::{MqttColor, MqttState};
-use crate::web_server::RestApiPayload;
+use crate::convert::{HsvColor, RestApiPayload, StateFromMqtt, StateToMqtt};
 
 use super::{Capability, Device, DeviceModel, DeviceTrait};
 
@@ -44,43 +40,43 @@ impl DeviceTrait for Light {
     &self.room
   }
 
-  fn update_state(&mut self, state: MqttState) {
+  fn update_state(&mut self, state: StateFromMqtt) {
     self.state.with_mqtt_state(self.model(), state);
   }
 
-  fn query_state(&self) -> MqttState {
+  fn query_state(&self) -> StateToMqtt {
     self.state.to_mqtt_state(self.model())
   }
 
-  fn query_update(&self) -> MqttPayload {
-    MqttPayload::new().with_state_query()
+  fn query_update(&self) -> StateToMqtt {
+    StateToMqtt::empty().with_state(None)
   }
 }
 
 impl EffectiveLight for Light {
-  fn turn_on(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn turn_on(&mut self) -> Vec<(Topic, StateToMqtt)> {
     if self.state.on {
       return vec![];
     }
     self.state.on = true;
     vec![(
       self.topic(TopicMode::Set),
-      MqttPayload::new().with_state_change(self.state.on).with_transition(),
+      StateToMqtt::empty().with_state(Some(self.state.on)).with_transition(),
     )]
   }
 
-  fn turn_off(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn turn_off(&mut self) -> Vec<(Topic, StateToMqtt)> {
     if !self.state.on {
       return vec![];
     }
     self.state.on = false;
     vec![(
       self.topic(TopicMode::Set),
-      MqttPayload::new().with_state_change(self.state.on).with_transition(),
+      StateToMqtt::empty().with_state(Some(self.state.on)).with_transition(),
     )]
   }
 
-  fn toggle(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn toggle(&mut self) -> Vec<(Topic, StateToMqtt)> {
     if self.state.on {
       self.turn_off()
     } else {
@@ -88,55 +84,46 @@ impl EffectiveLight for Light {
     }
   }
 
-  fn dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn dim_down(&mut self) -> Vec<(Topic, StateToMqtt)> {
     self.state.dim_down();
     vec![(
       self.topic(TopicMode::Set),
-      MqttPayload::new().with_brightness_change(self.state.brightness()).with_transition(),
+      StateToMqtt::empty().with_value(Some(self.state.color.val())).with_transition(),
     )]
   }
 
-  fn dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn dim_up(&mut self) -> Vec<(Topic, StateToMqtt)> {
     self.state.dim_up();
     vec![(
       self.topic(TopicMode::Set),
-      MqttPayload::new().with_brightness_change(self.state.brightness()).with_transition(),
+      StateToMqtt::empty().with_value(Some(self.state.color.val())).with_transition(),
     )]
   }
 
-  fn start_dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
-    vec![(
-      self.topic(TopicMode::Set),
-      MqttPayload::new().with_start_dimming(false).with_transition(),
-    )]
+  fn start_dim_down(&mut self) -> Vec<(Topic, StateToMqtt)> {
+    vec![(self.topic(TopicMode::Set), StateToMqtt::empty().with_brightness_move(-1))]
   }
 
-  fn start_dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
-    vec![(
-      self.topic(TopicMode::Set),
-      MqttPayload::new().with_start_dimming(true).with_transition(),
-    )]
+  fn start_dim_up(&mut self) -> Vec<(Topic, StateToMqtt)> {
+    vec![(self.topic(TopicMode::Set), StateToMqtt::empty().with_brightness_move(1))]
   }
 
-  fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn stop_dim(&mut self) -> Vec<(Topic, StateToMqtt)> {
     vec![
-      (self.topic(TopicMode::Set), MqttPayload::new().with_stop_dimming().with_transition()),
-      (self.topic(TopicMode::Set), MqttPayload::new().with_state_query()),
+      (self.topic(TopicMode::Set), StateToMqtt::empty().with_brightness_move(0)),
+      (self.topic(TopicMode::Set), StateToMqtt::empty().with_value(None)),
     ]
   }
 
-  fn change_state(&mut self, payload: RestApiPayload) -> Vec<(Topic, MqttPayload)> {
+  fn change_state(&mut self, payload: RestApiPayload) -> Vec<(Topic, StateToMqtt)> {
     let mqtt = if payload.hue.is_some() {
       assert!(payload.sat.is_some());
       assert!(payload.val.is_some());
-      self.state.color = Hsv::new(
-        payload.hue.unwrap() as f32,
-        payload.sat.unwrap() as f32,
-        payload.val.unwrap() as f32,
-      );
-      MqttPayload::new().with_color_change(self.state.color)
+      self.state.color =
+        HsvColor::new(payload.hue.unwrap(), payload.sat.unwrap(), payload.val.unwrap());
+      StateToMqtt::empty().with_color_change(self.state.color).with_transition()
     } else if let Some(val) = payload.val {
-      MqttPayload::new().with_brightness_change(val.into())
+      StateToMqtt::empty().with_value(Some(val)).with_transition()
     } else {
       return vec![];
     };
@@ -200,61 +187,49 @@ impl EffectiveLightCollection for LightGroup {
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize, Default)]
 pub struct LightState {
   pub on: bool,
-  pub color: Hsv,
-}
-
-impl Default for LightState {
-  fn default() -> Self {
-    Self { on: false, color: Hsv::new(1.0, 1.0, 1.0) }
-  }
+  pub color: HsvColor,
 }
 
 impl LightState {
-  pub fn with_mqtt_state(&mut self, model: DeviceModel, state: MqttState) {
+  pub fn with_mqtt_state(&mut self, model: DeviceModel, state: StateFromMqtt) {
     println!("\n\nwith mqtt state\n");
     println!("received: {:?}", state);
-    if model.capable_of(Capability::State) {
-      self.on = state.state.unwrap().into();
+    if let Some(on) = state.state() {
+      assert!(model.capable_of(Capability::State));
+      self.on = on
     }
-    if model.capable_of(Capability::Brightness) {
-      self.color.value = state.brightness(model.max_brightness()).unwrap().inner() as f32;
+    if let Some(val) = state.val() {
+      assert!(model.capable_of(Capability::Brightness));
+      self.color.with_val(val);
     }
-    if model.capable_of(Capability::Color) {
-      let color = state.color.unwrap();
-      let (x, y) = color.x_y();
-      let val = self.brightness().inner() as f32;
-      self.color = Yxy::new(x, y, val).into_color();
-      println!(
-        "{:?}, hue: {}, val: {val}",
-        self.color,
-        self.color.hue.into_radians() + std::f32::consts::PI,
-      );
+    if let Some(color) = state.hsv_color() {
+      assert!(model.capable_of(Capability::Color));
+      self.color = color;
     }
   }
 
-  pub fn to_mqtt_state(&self, model: DeviceModel) -> MqttState {
-    let mut res = MqttState::default();
+  pub fn to_mqtt_state(&self, model: DeviceModel) -> StateToMqtt {
+    let mut res = StateToMqtt::default();
     if model.capable_of(Capability::State) {
-      res.state = Some(self.on.into());
+      res = res.with_state(Some(self.on));
     }
     if model.capable_of(Capability::Brightness) {
-      res.set_brightness(self.brightness(), model.max_brightness());
+      res = res.with_value(Some(self.color.val()));
     }
     if model.capable_of(Capability::Color) {
-      res.color = Some(MqttColor::new(self.color));
+      res = res.with_color_change(self.color);
     }
     res
   }
-  pub fn brightness(&self) -> Scalar {
-    Scalar::from(self.color.value as f64)
-  }
   pub fn dim_down(&mut self) {
-    self.color.darken_assign(0.8);
+    todo!()
+    // self.color.darken_assign(0.8);
   }
   pub fn dim_up(&mut self) {
-    self.color.lighten_assign(0.8);
+    todo!()
+    // self.color.lighten_assign(0.8);
   }
 }

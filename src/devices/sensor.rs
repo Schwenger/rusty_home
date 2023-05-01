@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-  api::{payload::MqttPayload, topic::DeviceKind},
-  mqtt::MqttState,
+  api::topic::DeviceKind,
+  convert::{StateFromMqtt, StateToMqtt},
 };
 
 use super::{Capability, DeviceModel, DeviceTrait};
@@ -35,16 +35,16 @@ impl DeviceTrait for Sensor {
     &self.room
   }
 
-  fn update_state(&mut self, state: MqttState) {
+  fn update_state(&mut self, state: StateFromMqtt) {
     self.state.with_mqtt_state(self.model(), state);
   }
 
-  fn query_state(&self) -> MqttState {
+  fn query_state(&self) -> StateToMqtt {
     self.state.to_mqtt_state(self.model)
   }
 
-  fn query_update(&self) -> MqttPayload {
-    MqttPayload::new().with_state_query()
+  fn query_update(&self) -> StateToMqtt {
+    StateToMqtt::empty().with_battery_query()
   }
 }
 
@@ -56,9 +56,9 @@ pub struct SensorState {
 }
 
 impl SensorState {
-  pub fn with_mqtt_state(&mut self, model: DeviceModel, state: MqttState) {
+  pub fn with_mqtt_state(&mut self, model: DeviceModel, state: StateFromMqtt) {
     if model.capable_of(Capability::State) {
-      self.active = state.state.unwrap().into();
+      self.active = state.state().unwrap();
     }
     if model.capable_of(Capability::Humidity) {
       self.humidity = state.humidity.unwrap();
@@ -68,16 +68,16 @@ impl SensorState {
     }
   }
 
-  pub fn to_mqtt_state(&self, model: DeviceModel) -> MqttState {
-    let mut res = MqttState::default();
+  pub fn to_mqtt_state(&self, model: DeviceModel) -> StateToMqtt {
+    let mut res = StateToMqtt::empty();
     if model.capable_of(Capability::State) {
-      res.state = Some(self.active.into());
+      res = res.with_state(Some(self.active));
     }
     if model.capable_of(Capability::Humidity) {
-      res.humidity = Some(self.humidity);
+      res = res.with_humidity(self.humidity);
     }
     if model.capable_of(Capability::Temperature) {
-      res.temperature = Some(self.temp);
+      res = res.with_temperature(self.temp);
     }
     res
   }

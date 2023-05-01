@@ -5,7 +5,9 @@ impl ExecutorLogic {
   pub(super) async fn respond(&mut self, to: Query, over: Sender<JsonPayload>) {
     let res = match to {
       Query::Architecture => self.home.query_architecture(),
-      Query::DeviceState(target) => self.home.query_device(target),
+      Query::DeviceState(target) => {
+        JsonPayload::from_string(self.home.query_device(target).to_json_str())
+      }
     };
     over.send(res).expect("Failed to send response.");
   }

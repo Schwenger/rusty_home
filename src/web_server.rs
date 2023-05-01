@@ -12,6 +12,7 @@ use url::Url;
 
 use crate::api::request::{LightCommand, Query, Request};
 use crate::api::topic::Topic;
+use crate::convert::{Hue, RestApiPayload, Sat, Val};
 use crate::Result;
 
 #[derive(Debug)]
@@ -123,18 +124,10 @@ impl WebServer {
   fn transform_query(url: &Url) -> RestApiPayload {
     let map: HashMap<Cow<'_, str>, Cow<'_, str>> = url.query_pairs().collect();
     let topic = map.get("topic").map(|b| Topic::try_from(b.to_string()).unwrap());
-    let val = map.get("value").map(|b| b.parse().unwrap());
-    let hue = map.get("hue").map(|b| b.parse().unwrap());
-    let sat = map.get("saturation").map(|b| b.parse().unwrap());
+    let val = map.get("value").map(|b| b.parse::<f64>().unwrap()).map(Val::from_rest);
+    let hue = map.get("hue").map(|b| b.parse().unwrap()).map(Hue::from_rest);
+    let sat = map.get("saturation").map(|b| b.parse().unwrap()).map(Sat::from_rest);
     println!("{:?}", RestApiPayload { topic: topic.clone(), val, hue, sat });
     RestApiPayload { topic, val, hue, sat }
   }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct RestApiPayload {
-  pub topic: Option<Topic>,
-  pub val: Option<f64>,
-  pub hue: Option<f64>,
-  pub sat: Option<f64>,
 }

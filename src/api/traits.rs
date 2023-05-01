@@ -1,16 +1,17 @@
 use core::fmt::Debug;
 
 use crate::api::topic::Topic;
+use crate::convert::RestApiPayload;
+use crate::convert::StateToMqtt;
 use crate::devices::{Device, Light, Remote, Sensor};
-use crate::web_server::RestApiPayload;
 use crate::Result;
 
-use super::payload::{JsonPayload, MqttPayload};
+use super::payload::JsonPayload;
 use super::topic::TopicMode;
 
 pub trait QueryableHome {
   fn query_architecture(&self) -> JsonPayload;
-  fn query_device(&self, topic: Topic) -> JsonPayload;
+  fn query_device(&self, topic: Topic) -> StateToMqtt;
 }
 
 pub trait DeviceCollection: Debug {
@@ -76,39 +77,39 @@ pub trait EffectiveLightCollection {
 }
 
 impl<T: DeviceCollection> EffectiveLight for T {
-  fn turn_on(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn turn_on(&mut self) -> Vec<(Topic, StateToMqtt)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.turn_on()).collect()
   }
 
-  fn turn_off(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn turn_off(&mut self) -> Vec<(Topic, StateToMqtt)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.turn_off()).collect()
   }
 
-  fn toggle(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn toggle(&mut self) -> Vec<(Topic, StateToMqtt)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.toggle()).collect()
   }
 
-  fn dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn dim_down(&mut self) -> Vec<(Topic, StateToMqtt)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.dim_down()).collect()
   }
 
-  fn dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn dim_up(&mut self) -> Vec<(Topic, StateToMqtt)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.dim_up()).collect()
   }
 
-  fn start_dim_down(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn start_dim_down(&mut self) -> Vec<(Topic, StateToMqtt)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.start_dim_down()).collect()
   }
 
-  fn start_dim_up(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn start_dim_up(&mut self) -> Vec<(Topic, StateToMqtt)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.start_dim_up()).collect()
   }
 
-  fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)> {
+  fn stop_dim(&mut self) -> Vec<(Topic, StateToMqtt)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.stop_dim()).collect()
   }
 
-  fn change_state(&mut self, payload: RestApiPayload) -> Vec<(Topic, MqttPayload)> {
+  fn change_state(&mut self, payload: RestApiPayload) -> Vec<(Topic, StateToMqtt)> {
     self.flatten_lights_mut().into_iter().flat_map(|l| l.change_state(payload.clone())).collect()
   }
 }
@@ -123,15 +124,15 @@ pub trait ReadWriteHome {
 }
 
 pub trait EffectiveLight: Debug {
-  fn turn_on(&mut self) -> Vec<(Topic, MqttPayload)>;
-  fn turn_off(&mut self) -> Vec<(Topic, MqttPayload)>;
-  fn toggle(&mut self) -> Vec<(Topic, MqttPayload)>;
-  fn dim_down(&mut self) -> Vec<(Topic, MqttPayload)>;
-  fn dim_up(&mut self) -> Vec<(Topic, MqttPayload)>;
-  fn start_dim_down(&mut self) -> Vec<(Topic, MqttPayload)>;
-  fn start_dim_up(&mut self) -> Vec<(Topic, MqttPayload)>;
-  fn stop_dim(&mut self) -> Vec<(Topic, MqttPayload)>;
-  fn change_state(&mut self, payload: RestApiPayload) -> Vec<(Topic, MqttPayload)>;
+  fn turn_on(&mut self) -> Vec<(Topic, StateToMqtt)>;
+  fn turn_off(&mut self) -> Vec<(Topic, StateToMqtt)>;
+  fn toggle(&mut self) -> Vec<(Topic, StateToMqtt)>;
+  fn dim_down(&mut self) -> Vec<(Topic, StateToMqtt)>;
+  fn dim_up(&mut self) -> Vec<(Topic, StateToMqtt)>;
+  fn start_dim_down(&mut self) -> Vec<(Topic, StateToMqtt)>;
+  fn start_dim_up(&mut self) -> Vec<(Topic, StateToMqtt)>;
+  fn stop_dim(&mut self) -> Vec<(Topic, StateToMqtt)>;
+  fn change_state(&mut self, payload: RestApiPayload) -> Vec<(Topic, StateToMqtt)>;
 }
 
 pub trait Addressable {

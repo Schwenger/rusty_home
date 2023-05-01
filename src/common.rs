@@ -1,6 +1,7 @@
 use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Scalar(pub(self) f64);
@@ -68,5 +69,23 @@ impl Mul for Scalar {
 impl MulAssign for Scalar {
   fn mul_assign(&mut self, rhs: Self) {
     self.0 = self.inner() * rhs.inner()
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+pub enum Tertiary<T: std::fmt::Debug + Clone + Serialize> {
+  Some(T),
+  #[default]
+  None,
+  Query,
+}
+
+impl<T: std::fmt::Debug + Clone + Serialize> Tertiary<T> {
+  pub fn to_json(&self) -> Option<Value> {
+    match self {
+      Tertiary::None => None,
+      Tertiary::Query => Some(json!("")),
+      Tertiary::Some(v) => Some(serde_json::to_value(v).unwrap()),
+    }
   }
 }

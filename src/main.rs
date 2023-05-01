@@ -20,6 +20,7 @@ pub mod api;
 pub mod common;
 pub mod config;
 pub mod controller;
+pub mod convert;
 pub mod devices;
 pub mod error;
 pub mod home;
