@@ -195,8 +195,6 @@ pub struct LightState {
 
 impl LightState {
   pub fn with_mqtt_state(&mut self, model: DeviceModel, state: StateFromMqtt) {
-    println!("\n\nwith mqtt state\n");
-    println!("received: {:?}", state);
     if let Some(on) = state.state() {
       assert!(model.capable_of(Capability::State));
       self.on = on

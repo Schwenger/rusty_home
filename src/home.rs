@@ -85,7 +85,6 @@ impl QueryableHome for Home {
   }
 
   fn query_device(&self, topic: Topic) -> StateToMqtt {
-    println!("{}", topic.to_str());
     self.find_device(&topic).unwrap().query_state()
   }
 }

@@ -46,7 +46,6 @@ impl ExecutorLogic {
   }
 
   pub(super) async fn send_mqtt_payloads(&mut self, payloads: Vec<(Topic, StateToMqtt)>) {
-    println!("Sending mqtt payloads.");
     stream::iter(payloads)
       .for_each_concurrent(None, |(t, p)| async { self.client.lock().await.publish(t, p).await })
       .await;

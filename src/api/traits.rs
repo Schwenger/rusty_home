@@ -22,7 +22,6 @@ pub trait DeviceCollection: Debug {
     self.flatten_devices().into_iter().find(|d| &d.topic(topic.mode()) == topic)
   }
   fn find_device_mut(&mut self, topic: &Topic) -> Option<&mut Device> {
-    println!("{}", topic.to_str());
     self.flatten_devices_mut().into_iter().find(|d| &d.topic(topic.mode()) == topic)
   }
 

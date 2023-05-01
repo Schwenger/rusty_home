@@ -75,7 +75,7 @@ impl MqttClient {
   }
 
   async fn handle_message(&self, msg: Message) {
-    println!("Handling a message. {msg}\n");
+    println!("Handling a message. \n{msg}");
     let target = msg.topic();
     let target = Topic::try_from(target.to_string()).unwrap();
     let payload: Value = serde_json::from_str(msg.payload_str().borrow()).unwrap();
@@ -91,7 +91,7 @@ impl MqttClient {
         self.queue.send(Request::RemoteAction(ra)).unwrap();
       }
     } else if target.device().is_some() {
-      println!("Received update");
+      println!("Received device state update");
       let state = serde_json::from_str(&msg.payload_str()).unwrap();
       let req = Request::DeviceCommand(DeviceCommand::UpdateState(state), target);
       self.queue.send(req).expect("Error handling.");
@@ -118,7 +118,7 @@ impl MqttClient {
 
   pub async fn subscribe_to_all<I: IntoIterator<Item = Topic>>(&self, topics: I) {
     for topic in topics {
-      println!("Subscribed to {}", &topic.to_str());
+      println!("Subscribing to {}", &topic.to_str());
       self.subscribe_to(topic).await;
     }
   }

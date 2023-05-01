@@ -46,7 +46,7 @@ impl WebServer {
     req: HyperRequest<Body>,
     queue: UnboundedSender<Request>,
   ) -> std::result::Result<Response<Body>, Infallible> {
-    println!("\nProcessing request: {}", req.uri());
+    println!("\nReceived web request: {}", req.uri());
     if req.method() != Method::GET {
       println!("Bad request: Not a get-request.");
       return Ok(Self::bad_request("Only get requests are allowed."));
@@ -55,7 +55,6 @@ impl WebServer {
       Url::parse("http://localhost:8088").and_then(|b| b.join(&req.uri().to_string())).unwrap();
     let mut segments = url.path_segments().unwrap();
     let category = segments.next().unwrap();
-    println!("Received a {} request.", category);
     let response = match category {
       "query" => Self::handle_query(segments, &url, queue).await,
       "command" => Self::handle_command(segments, &url, queue).await,
@@ -82,7 +81,6 @@ impl WebServer {
     let command = command.unwrap();
     let payload = Self::transform_query(url);
     queue.send(Request::LightCommand(command, payload)).unwrap();
-    println!("Response: Success");
     Self::accepted("Success".to_string())
   }
 
@@ -103,7 +101,7 @@ impl WebServer {
     };
     queue.send(request).expect("Error handling");
     let resp = receiver.await.unwrap();
-    println!("Response: {}", resp.to_str());
+    println!("Responding to query with: {}", resp.to_str());
     Self::accepted(resp.to_str())
   }
 
@@ -127,7 +125,6 @@ impl WebServer {
     let val = map.get("value").map(|b| b.parse::<f64>().unwrap()).map(Val::from_rest);
     let hue = map.get("hue").map(|b| b.parse().unwrap()).map(Hue::from_rest);
     let sat = map.get("saturation").map(|b| b.parse().unwrap()).map(Sat::from_rest);
-    println!("{:?}", RestApiPayload { topic: topic.clone(), val, hue, sat });
     RestApiPayload { topic, val, hue, sat }
   }
 }
