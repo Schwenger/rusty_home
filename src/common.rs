@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 pub struct Scalar(pub(self) f64);
 impl From<f64> for Scalar {
   fn from(value: f64) -> Self {
-    assert!((0.0..=1.0).contains(&value));
+    assert!((0.0..=1.0).contains(&value), "Value {value} is not a scalar.");
     Self(value)
   }
 }

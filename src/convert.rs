@@ -14,7 +14,7 @@ pub struct Hue {
 }
 
 impl Hue {
-  pub fn from_hsv_degree(hue: f32) -> Self {
+  pub fn from_hsv_radians(hue: f32) -> Self {
     use std::f32::consts::PI;
     let hue = (hue + PI) / (2.0 * PI);
     Self { inner: Scalar::from(hue as f64) }
@@ -96,7 +96,7 @@ pub struct HsvColor {
 
 impl Default for HsvColor {
   fn default() -> Self {
-    Self { hue: Hue::from_hsv_degree(0.0), sat: Sat::from_hsv(0.0), val: Val::from_hsv(1.0) }
+    Self { hue: Hue::from_hsv_radians(0.0), sat: Sat::from_hsv(0.0), val: Val::from_hsv(1.0) }
   }
 }
 
@@ -107,7 +107,7 @@ impl HsvColor {
 
   pub fn new_xy(x: Scalar, y: Scalar, val: Val) -> Self {
     let hsv: Hsv = Yxy::new(x.inner() as f32, y.inner() as f32, val.to_hsv()).into_color();
-    let hue = Hue::from_hsv_degree(hsv.hue.into_degrees());
+    let hue = Hue::from_hsv_radians(hsv.hue.into_radians());
     let sat = Sat::from_hsv(hsv.saturation);
     let val = Val::from_hsv(hsv.value);
     Self::new(hue, sat, val)
@@ -226,13 +226,13 @@ impl StateToMqtt {
   pub fn to_json_str(self, rest: bool) -> String {
     let mut obj = json!({});
 
-    let brightness = if rest {
-      self.brightness.map(|v| v.to_rest()).to_json()
+    let (label, brightness) = if rest {
+      ("val", self.brightness.map(|v| v.to_rest()).to_json())
     } else {
-      self.brightness.map(|v| v.to_mqtt()).to_json()
+      ("brightness", self.brightness.map(|v| v.to_mqtt()).to_json())
     };
     if let Some(json) = brightness {
-      obj.as_object_mut().unwrap().insert(String::from("brightness"), json);
+      obj.as_object_mut().unwrap().insert(String::from(label), json);
     }
 
     if let Some(color) = self.color {
