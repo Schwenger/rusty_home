@@ -305,6 +305,11 @@ impl StateToMqtt {
     self
   }
 
+  pub fn with_brightness_step(mut self, factor: i8) -> Self {
+    self.brightness_move = Some(factor * 2 * Self::DIM_SPEED);
+    self
+  }
+
   pub fn with_transition(mut self) -> Self {
     self.transition = Some(Self::TRANSITION);
     self

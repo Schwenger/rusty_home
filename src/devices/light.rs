@@ -79,19 +79,17 @@ impl EffectiveLight for Light {
   }
 
   fn dim_down(&mut self) -> Vec<(Topic, StateToMqtt)> {
-    self.state.dim_down();
-    vec![(
-      self.topic(TopicMode::Set),
-      StateToMqtt::empty().with_value(Some(self.state.color.val())).with_transition(),
-    )]
+    vec![
+      (self.topic(TopicMode::Set), StateToMqtt::empty().with_brightness_step(-1)),
+      (self.topic(TopicMode::Get), StateToMqtt::empty().with_value(None)),
+    ]
   }
 
   fn dim_up(&mut self) -> Vec<(Topic, StateToMqtt)> {
-    self.state.dim_up();
-    vec![(
-      self.topic(TopicMode::Set),
-      StateToMqtt::empty().with_value(Some(self.state.color.val())).with_transition(),
-    )]
+    vec![
+      (self.topic(TopicMode::Set), StateToMqtt::empty().with_brightness_step(1)),
+      (self.topic(TopicMode::Get), StateToMqtt::empty().with_value(None)),
+    ]
   }
 
   fn start_dim_down(&mut self) -> Vec<(Topic, StateToMqtt)> {
@@ -105,7 +103,7 @@ impl EffectiveLight for Light {
   fn stop_dim(&mut self) -> Vec<(Topic, StateToMqtt)> {
     vec![
       (self.topic(TopicMode::Set), StateToMqtt::empty().with_brightness_move(0)),
-      (self.topic(TopicMode::Set), StateToMqtt::empty().with_value(None)),
+      (self.topic(TopicMode::Get), StateToMqtt::empty().with_value(None)),
     ]
   }
 
@@ -217,13 +215,5 @@ impl LightState {
       res = res.with_color_change(&self.color);
     }
     res
-  }
-  pub fn dim_down(&mut self) {
-    todo!()
-    // self.color.darken_assign(0.8);
-  }
-  pub fn dim_up(&mut self) {
-    todo!()
-    // self.color.lighten_assign(0.8);
   }
 }
