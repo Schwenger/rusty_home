@@ -53,6 +53,7 @@ pub struct SensorState {
   active: bool,
   humidity: f64,
   temp: f64,
+  occupancy: bool,
 }
 
 impl SensorState {
@@ -65,6 +66,9 @@ impl SensorState {
     }
     if model.capable_of(Capability::Temperature) {
       self.temp = state.temperature.unwrap();
+    }
+    if model.capable_of(Capability::Occupancy) {
+      self.occupancy = state.occupancy.unwrap();
     }
   }
 
@@ -79,13 +83,16 @@ impl SensorState {
     if model.capable_of(Capability::Temperature) {
       res = res.with_temperature(self.temp);
     }
+    if model.capable_of(Capability::Occupancy) {
+      res = res.with_occupancy(self.occupancy);
+    }
     res
   }
 }
 
 impl Default for SensorState {
   fn default() -> Self {
-    Self { active: false, humidity: 0.0, temp: 0.0 }
+    Self { active: false, humidity: 0.0, temp: 0.0, occupancy: false }
   }
 }
 
@@ -94,6 +101,7 @@ impl From<Value> for SensorState {
     let active = value.get("state").map(|v| v == "ON").unwrap_or(false);
     let humidity = value.get("humid").and_then(Value::as_f64).unwrap_or(0.0);
     let temp = value.get("temperature").and_then(Value::as_f64).unwrap_or(0.0);
-    SensorState { active, humidity, temp }
+    let occupancy = value.get("occupancy").and_then(Value::as_bool).unwrap_or(false);
+    SensorState { active, humidity, temp, occupancy }
   }
 }

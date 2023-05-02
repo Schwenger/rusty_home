@@ -163,6 +163,8 @@ pub struct StateFromMqtt {
   pub temperature: Option<f64>,
   #[serde(default)]
   pub humidity: Option<f64>,
+  #[serde(default)]
+  pub occupancy: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq)]
@@ -213,6 +215,7 @@ pub struct StateToMqtt {
   battery: Option<()>,
   temperature: Option<f64>,
   humidity: Option<f64>,
+  occupancy: Option<bool>,
 }
 
 impl StateToMqtt {
@@ -271,6 +274,10 @@ impl StateToMqtt {
       obj.as_object_mut().unwrap().insert(String::from("temperature"), json!(v));
     }
 
+    if let Some(v) = self.occupancy {
+      obj.as_object_mut().unwrap().insert(String::from("occupancy"), json!(v));
+    }
+
     obj.to_string()
   }
 
@@ -327,6 +334,11 @@ impl StateToMqtt {
 
   pub fn with_temperature(mut self, t: f64) -> Self {
     self.temperature = Some(t);
+    self
+  }
+
+  pub fn with_occupancy(mut self, o: bool) -> Self {
+    self.occupancy = Some(o);
     self
   }
 }

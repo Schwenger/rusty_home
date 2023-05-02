@@ -36,6 +36,7 @@ pub enum Capability {
   State,
   Humidity,
   Temperature,
+  Occupancy,
 }
 
 #[derive(Debug, Clone)]
@@ -166,6 +167,7 @@ pub enum DeviceModel {
   HueColor,
   IkeaMultiButton,
   IkeaDimmer,
+  IkeaMotion,
 }
 
 impl DeviceModel {
@@ -177,6 +179,7 @@ impl DeviceModel {
       DeviceModel::HueColor => DeviceKind::Light,
       DeviceModel::IkeaMultiButton => DeviceKind::Remote,
       DeviceModel::IkeaDimmer => DeviceKind::Remote,
+      DeviceModel::IkeaMotion => DeviceKind::Sensor,
     }
   }
 
@@ -186,7 +189,8 @@ impl DeviceModel {
       DeviceModel::IkeaOutlet
       | DeviceModel::IkeaDimmable
       | DeviceModel::IkeaMultiButton
-      | DeviceModel::IkeaDimmer => Vendor::Ikea,
+      | DeviceModel::IkeaDimmer
+      | DeviceModel::IkeaMotion => Vendor::Ikea,
       DeviceModel::HueColor => Vendor::Philips,
     }
   }
@@ -197,6 +201,7 @@ impl DeviceModel {
       DeviceModel::IkeaOutlet => vec![Capability::State],
       DeviceModel::IkeaDimmable => vec![Capability::State, Capability::Brightness],
       DeviceModel::HueColor => vec![Capability::State, Capability::Brightness, Capability::Color],
+      DeviceModel::IkeaMotion => vec![Capability::Occupancy],
       DeviceModel::IkeaMultiButton => vec![],
       DeviceModel::IkeaDimmer => vec![],
     }
@@ -204,19 +209,6 @@ impl DeviceModel {
 
   pub fn capable_of(&self, capa: Capability) -> bool {
     self.capabilities().contains(&capa)
-  }
-
-  pub fn max_brightness(&self) -> f64 {
-    match self {
-      DeviceModel::IkeaDimmable => 254.0,
-      DeviceModel::HueColor => 254.0,
-      DeviceModel::TuyaHumidity
-      | DeviceModel::IkeaOutlet
-      | DeviceModel::IkeaMultiButton
-      | DeviceModel::IkeaDimmer => {
-        panic!("There is no brightness for models not capable of brightness!")
-      }
-    }
   }
 }
 
