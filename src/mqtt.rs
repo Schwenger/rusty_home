@@ -16,7 +16,7 @@ use crate::{
   Result,
 };
 use paho_mqtt::{AsyncClient, AsyncReceiver, CreateOptionsBuilder, Message, QOS_1};
-use serde_json::Value;
+use serde_json::Value as JsonValue;
 use tokio::sync::{mpsc::UnboundedSender, Mutex};
 
 #[derive(Clone)]
@@ -78,7 +78,7 @@ impl MqttClient {
     println!("Handling a message. \n{msg}");
     let target = msg.topic();
     let target = Topic::try_from(target.to_string()).unwrap();
-    let payload: Value = serde_json::from_str(msg.payload_str().borrow()).unwrap();
+    let payload: JsonValue = serde_json::from_str(msg.payload_str().borrow()).unwrap();
     if target.kind() == TopicKind::Bridge {
       println!("Received bridge event.  Ignored.")
     } else if let Some(action) = payload.get("action") {
@@ -95,8 +95,8 @@ impl MqttClient {
       }
     } else if target.device().is_some() {
       println!("Received device state update");
-      let state = serde_json::from_str(&msg.payload_str()).unwrap();
-      let req = Request::DeviceCommand(DeviceCommand::UpdateState(state), target);
+      let parsed = serde_json::from_value(payload.clone()).unwrap();
+      let req = Request::DeviceCommand(DeviceCommand::UpdateState(parsed), target);
       self.queue.send(req).expect("Error handling.");
     }
   }

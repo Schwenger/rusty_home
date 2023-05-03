@@ -1,6 +1,6 @@
 use palette::{FromColor, Hsv, IntoColor};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::{
   api::topic::Topic,
@@ -223,6 +223,10 @@ impl StateToMqtt {
   const DIM_SPEED: i8 = 40;
 
   pub fn to_json_str(self, rest: bool) -> String {
+    self.to_json_value(rest).to_string()
+  }
+
+  pub fn to_json_value(self, rest: bool) -> Value {
     let mut obj = json!({});
 
     let (label, brightness) = if rest {
@@ -278,7 +282,7 @@ impl StateToMqtt {
       obj.as_object_mut().unwrap().insert(String::from("occupancy"), json!(v));
     }
 
-    obj.to_string()
+    obj
   }
 
   pub fn empty() -> Self {

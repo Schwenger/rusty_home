@@ -24,6 +24,7 @@ pub mod devices;
 pub mod error;
 pub mod home;
 pub mod mqtt;
+pub mod scene;
 pub mod web_server;
 
 type Error = HomeBaseError;

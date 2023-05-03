@@ -31,7 +31,7 @@ impl Controller {
     let home = Home::read(&config.home.dir);
     let (q_send, q_recv) = unbounded_channel();
     let (client, mqtt_receiver) = Self::setup_client(&config, &home, q_send.clone()).await?;
-    let executor = Executor::new(q_recv, client, home);
+    let executor = Executor::new(q_recv, q_send.clone(), client, home);
     let web_server = WebServer::new(q_send.clone());
     Self::startup(q_send, &config.home.dir);
     Ok(Self { mqtt_receiver, executor, web_server })

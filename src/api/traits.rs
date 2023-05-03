@@ -1,5 +1,7 @@
 use core::fmt::Debug;
 
+use tokio::sync::mpsc::UnboundedSender;
+
 use crate::api::topic::Topic;
 use crate::convert::RestApiPayload;
 use crate::convert::StateToMqtt;
@@ -7,6 +9,7 @@ use crate::devices::{Device, Light, Remote, Sensor};
 use crate::Result;
 
 use super::payload::JsonPayload;
+use super::request::Request;
 use super::topic::TopicMode;
 
 pub trait QueryableHome {
@@ -136,6 +139,10 @@ pub trait EffectiveLight: Debug {
 
 pub trait Addressable {
   fn topic(&self, mode: TopicMode) -> Topic;
+}
+
+pub trait Scenable {
+  fn trigger_update_scene(&self, queue: &UnboundedSender<Request>);
 }
 
 pub trait JsonConvertible: Sized {
