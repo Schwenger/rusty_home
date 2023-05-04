@@ -1,5 +1,6 @@
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request as HyperRequest, Response, Server, StatusCode};
+use local_ip_address::local_ip;
 use serde_json::json;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -29,7 +30,7 @@ impl WebServer {
   pub async fn run(self) -> Result<Infallible> {
     println!("Running web server.");
     let WebServer { queue } = self;
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8088));
+    let addr = SocketAddr::new(local_ip().unwrap(), 8088);
     let make_svc = make_service_fn(move |_conn| {
       let clone = queue.clone();
       async move { Ok::<_, Infallible>(service_fn(move |req| Self::process(req, clone.clone()))) }
