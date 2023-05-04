@@ -16,7 +16,7 @@ use crate::{
   },
   convert::{RestApiPayload, StateToMqtt},
   devices::{Device, DeviceTrait},
-  scene::{Comparison, DeviceStateTrigger, Effect, Scene, Trigger},
+  scene::{Comparison, DeviceStateTrigger, Effect, Scene, TimeTrigger, Trigger},
   Result,
 };
 
@@ -28,14 +28,13 @@ mod room;
 pub struct Home {
   name: String,
   rooms: Vec<Room>,
-  // #[serde(skip)]
-  // scene: Scene,
+  scenes: Vec<Scene>,
 }
 
 impl Scenable for Home {
   fn trigger_update_scene(&self, queue: &UnboundedSender<Request>) {
-    for scene in self.temp_scenes() {
-      let Scene { trigger, effect } = &scene;
+    for scene in self.scenes.iter() {
+      let Scene { trigger, effect } = scene;
       let triggered = self.evaluate_trigger(trigger);
       if triggered {
         queue.send(self.execute_effect(effect)).unwrap();
@@ -49,7 +48,7 @@ impl Home {
     match trigger {
       Trigger::And(a, b) => self.evaluate_trigger(a.as_ref()) && self.evaluate_trigger(b.as_ref()),
       Trigger::DeviceState(dst) => self.evaluate_device_state_trigger(dst),
-      Trigger::Time { from, duration } => self.evaluate_time_trigger(*from, *duration),
+      Trigger::Time(TimeTrigger { from, duration }) => self.evaluate_time_trigger(*from, *duration),
     }
   }
 
@@ -83,37 +82,6 @@ impl Home {
     payload.topic = Some(target.clone());
     assert_ne!(command, LightCommand::ChangeState);
     Request::LightCommand(command, payload)
-  }
-
-  fn temp_scenes(&self) -> Vec<Scene> {
-    let trigger = Trigger::And(
-      Box::new(Trigger::DeviceState(DeviceStateTrigger {
-        target: Topic::try_from("zigbee2mqtt/Device/Sensor/Office/Motion".to_string()).unwrap(),
-        field: "occupancy".to_string(),
-        op: Comparison::Equality { value: "true".to_string() },
-      })),
-      Box::new(Trigger::Time {
-        from: NaiveTime::from_hms_opt(22, 0, 0).unwrap(),
-        duration: Duration::hours(6),
-      }),
-    );
-    vec![
-      Scene {
-        trigger: trigger.clone(),
-        effect: Effect {
-          target: Topic::try_from("zigbee2mqtt/Device/Outlet/Office/Comfort Light".to_string())
-            .unwrap(),
-          command: LightCommand::TurnOn,
-        },
-      },
-      Scene {
-        trigger,
-        effect: Effect {
-          target: Topic::try_from("zigbee2mqtt/Device/Light/Bedroom/Orb".to_string()).unwrap(),
-          command: LightCommand::TurnOn,
-        },
-      },
-    ]
   }
 }
 
