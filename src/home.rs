@@ -1,22 +1,19 @@
 use std::fs::File;
 
-use chrono::{Duration, Local, NaiveTime};
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
   api::{
     payload::JsonPayload,
-    request::{LightCommand, Request},
     topic::{Topic, TopicMode},
     traits::{
       Addressable, DeviceCollection, EditableHome, EffectiveLight, EffectiveLightCollection,
-      QueryableHome, ReadWriteHome, Scenable,
+      QueryableHome, ReadWriteHome,
     },
   },
-  convert::{RestApiPayload, StateToMqtt},
+  convert::StateToMqtt,
   devices::{Device, DeviceTrait},
-  scene::{Comparison, DeviceStateTrigger, Effect, Scene, TimeTrigger, Trigger},
+  scene::Scene,
   Result,
 };
 
@@ -28,61 +25,7 @@ mod room;
 pub struct Home {
   name: String,
   rooms: Vec<Room>,
-  scenes: Vec<Scene>,
-}
-
-impl Scenable for Home {
-  fn trigger_update_scene(&self, queue: &UnboundedSender<Request>) {
-    for scene in self.scenes.iter() {
-      let Scene { trigger, effect } = scene;
-      let triggered = self.evaluate_trigger(trigger);
-      if triggered {
-        queue.send(self.execute_effect(effect)).unwrap();
-      }
-    }
-  }
-}
-
-impl Home {
-  fn evaluate_trigger(&self, trigger: &Trigger) -> bool {
-    match trigger {
-      Trigger::And(a, b) => self.evaluate_trigger(a.as_ref()) && self.evaluate_trigger(b.as_ref()),
-      Trigger::DeviceState(dst) => self.evaluate_device_state_trigger(dst),
-      Trigger::Time(TimeTrigger { from, duration }) => self.evaluate_time_trigger(*from, *duration),
-    }
-  }
-
-  fn evaluate_time_trigger(&self, from: NaiveTime, duration: Duration) -> bool {
-    let now = Local::now().time();
-    if from < from + duration {
-      from < now && now < from + duration
-    } else {
-      from < now && now > from + duration
-    }
-  }
-
-  fn evaluate_device_state_trigger(&self, dst: &DeviceStateTrigger) -> bool {
-    let DeviceStateTrigger { target, field, op } = dst;
-    let device = self.find_device(target).unwrap();
-    let state = device.query_state().to_json_value(false);
-    let field = state.get(field);
-    if field.is_none() {
-      return false;
-    }
-    let field = field.unwrap();
-    match op {
-      Comparison::BoolComparison { pivot } => field.as_bool().map(|c| c == *pivot).unwrap_or(false),
-      Comparison::Equality { value } => &field.to_string() == value,
-    }
-  }
-
-  fn execute_effect(&self, effect: &Effect) -> Request {
-    let Effect { ref target, command } = *effect;
-    let mut payload = RestApiPayload { topic: Some(target.clone()), ..RestApiPayload::default() };
-    payload.topic = Some(target.clone());
-    assert_ne!(command, LightCommand::ChangeState);
-    Request::LightCommand(command, payload)
-  }
+  pub scenes: Vec<Scene>,
 }
 
 impl Addressable for Home {

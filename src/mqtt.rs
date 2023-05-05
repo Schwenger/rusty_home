@@ -19,11 +19,11 @@ use paho_mqtt::{AsyncClient, AsyncReceiver, CreateOptionsBuilder, Message, QOS_1
 use serde_json::Value as JsonValue;
 use tokio::sync::{mpsc::UnboundedSender, Mutex};
 
-#[derive(Clone)]
 #[allow(missing_debug_implementations)]
 pub struct MqttClient {
   client: AsyncClient,
   queue: UnboundedSender<Request>,
+  updates: UnboundedSender<(Topic, JsonValue)>,
 }
 
 #[allow(missing_debug_implementations)]
@@ -39,12 +39,13 @@ pub async fn setup_client(
   host: &str,
   port: u16,
   queue: UnboundedSender<Request>,
+  updates: UnboundedSender<(Topic, JsonValue)>,
 ) -> Result<(ProtectedClient, MqttReceiver)> {
   let url = format!("mqtt://{host}:{port}");
   let mut client = CreateOptionsBuilder::new().client_id("Mac").server_uri(url).create_client()?;
   let stream = client.get_stream(None);
   client.connect(None).await?;
-  let mqtt_client = MqttClient { client, queue };
+  let mqtt_client = MqttClient { client, queue, updates };
   let protected = Arc::new(Mutex::new(mqtt_client));
   let receiver = MqttReceiver { stream, client: protected.clone() };
   Ok((protected, receiver))
@@ -96,8 +97,9 @@ impl MqttClient {
     } else if target.device().is_some() {
       println!("Received device state update");
       let parsed = serde_json::from_value(payload.clone()).unwrap();
-      let req = Request::DeviceCommand(DeviceCommand::UpdateState(parsed), target);
+      let req = Request::DeviceCommand(DeviceCommand::UpdateState(parsed), target.clone());
       self.queue.send(req).expect("Error handling.");
+      self.updates.send((target, payload)).expect("Error handling.");
     }
   }
 

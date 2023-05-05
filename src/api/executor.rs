@@ -1,5 +1,7 @@
+use std::rc::Rc;
+
 use futures::{stream, StreamExt};
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::{mpsc::UnboundedReceiver, Mutex};
 
 use crate::{convert::StateToMqtt, home::Home, mqtt::ProtectedClient, Result};
 
@@ -14,11 +16,10 @@ pub struct Executor {
 impl Executor {
   pub fn new(
     requests: UnboundedReceiver<Request>,
-    sender: UnboundedSender<Request>,
     client: ProtectedClient,
-    home: Home,
+    home: Rc<Mutex<Home>>,
   ) -> Self {
-    let inner = ExecutorLogic { client, queue: sender, home };
+    let inner = ExecutorLogic { client, home };
     Executor { requests, inner }
   }
 
@@ -32,11 +33,9 @@ impl Executor {
 }
 
 #[allow(missing_debug_implementations)]
-#[derive(Clone)]
 pub struct ExecutorLogic {
   pub(super) client: ProtectedClient,
-  pub(super) queue: UnboundedSender<Request>,
-  pub(super) home: Home,
+  pub(super) home: Rc<Mutex<Home>>,
 }
 
 impl ExecutorLogic {

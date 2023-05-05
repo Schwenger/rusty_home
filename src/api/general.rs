@@ -5,7 +5,7 @@ impl ExecutorLogic {
     match cmd {
       General::Shutdown { home_path } => {
         self.client.lock().await.disconnect().await;
-        self.home.persist(&home_path).expect("Couldn't write home.")
+        self.home.lock().await.persist(&home_path).expect("Couldn't write home.")
       }
     }
   }

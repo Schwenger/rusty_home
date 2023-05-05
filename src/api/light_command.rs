@@ -5,7 +5,8 @@ use super::{executor::ExecutorLogic, request::LightCommand, traits::EffectiveLig
 impl ExecutorLogic {
   pub(super) async fn execute_light(&mut self, cmd: LightCommand, adds: RestApiPayload) {
     let target = adds.topic.clone().unwrap();
-    let light = self.home.find_effective_light_mut(&target).expect("Implement error handling.");
+    let mut home = self.home.lock().await;
+    let light = home.find_effective_light_mut(&target).expect("Implement error handling.");
     let payloads = match cmd {
       LightCommand::TurnOn => light.turn_on(),
       LightCommand::TurnOff => light.turn_off(),
@@ -17,6 +18,7 @@ impl ExecutorLogic {
       LightCommand::StopDim => light.stop_dim(),
       LightCommand::ChangeState => light.change_state(adds),
     };
+    drop(home);
     self.send_mqtt_payloads(payloads).await;
   }
 }

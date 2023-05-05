@@ -4,19 +4,20 @@ use super::{
   executor::ExecutorLogic,
   request::DeviceCommand,
   topic::{Topic, TopicMode},
-  traits::{DeviceCollection, Scenable},
+  traits::DeviceCollection,
 };
 
 impl ExecutorLogic {
   pub(super) async fn execute_device(&mut self, target: Topic, cmd: DeviceCommand) {
     match cmd {
       DeviceCommand::UpdateState(state) => {
-        self.home.find_device_mut(&target).unwrap().update_state(state);
-        self.home.trigger_update_scene(&self.queue);
+        self.home.lock().await.find_device_mut(&target).unwrap().update_state(state);
       }
       DeviceCommand::QueryUpdate => {
-        let device = self.home.find_device(&target).unwrap();
+        let home = self.home.lock().await;
+        let device = home.find_device(&target).unwrap();
         let payload = device.query_update();
+        drop(home);
         self.send_mqtt_payloads(vec![(target.with_mode(TopicMode::Get), payload)]).await;
       }
     }
