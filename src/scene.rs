@@ -76,8 +76,14 @@ impl<'a> SceneEvaluator<'a> {
   fn evaluate_time_trigger(&self, from: NaiveTime, duration: Duration) -> bool {
     let now = Local::now().time();
     let res = if from < from + duration {
+      println!("{from} < {now} && {now} < {from} + {duration}.");
+      println!("{} && {}.", from < now, now < from + duration);
+      println!("{}.", from < now && now < from + duration);
       from < now && now < from + duration
     } else {
+      println!("{from} < {now} && {now} > {from} + {duration}.");
+      println!("{} && {}.", from < now, now > from + duration);
+      println!("{}.", from < now && now > from + duration);
       from < now && now > from + duration
     };
     println!("Evaluating timed trigger with result {res}.");
