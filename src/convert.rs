@@ -1,3 +1,4 @@
+use guard::guard;
 use palette::{FromColor, Hsv, IntoColor};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -175,10 +176,10 @@ pub struct MqttColorIn {
 
 impl StateFromMqtt {
   pub fn hsv_color(&self) -> Option<HsvColor> {
-    if self.val().is_none() || self.hue().is_none() || self.sat().is_none() {
-      return None;
-    }
-    Some(HsvColor::new(self.hue().unwrap(), self.sat().unwrap(), self.val().unwrap()))
+    guard!(let Some(val) = self.val() else { return None });
+    guard!(let Some(hue) = self.hue() else { return None });
+    guard!(let Some(sat) = self.sat() else { return None });
+    Some(HsvColor::new(hue, sat, val))
   }
 
   pub fn val(&self) -> Option<Val> {

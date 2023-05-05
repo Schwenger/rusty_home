@@ -93,13 +93,9 @@ impl<'a> SceneEvaluator<'a> {
       return false;
     }
     println!("Found proper target.");
-    let field = state.get(field);
-    if field.is_none() {
-      println!("Field not present.");
-      return false;
-    }
-    println!("Found field with value {}.", field.unwrap());
-    let field = field.unwrap();
+    guard!(let Some(field) = state.get(field) else { return false });
+    println!("Found field with value {}.", field);
+    let field = field;
     match op {
       Comparison::BoolComparison { pivot } => field.as_bool().map(|c| c == *pivot).unwrap_or(false),
       Comparison::Equality { value } => {

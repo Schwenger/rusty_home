@@ -1,3 +1,4 @@
+use guard::guard;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request as HyperRequest, Response, Server, StatusCode};
 use local_ip_address::local_ip;
@@ -70,16 +71,9 @@ impl WebServer {
     url: &Url,
     queue: UnboundedSender<Request>,
   ) -> Response<Body> {
-    let command = segments.next();
-    if command.is_none() {
-      return Self::bad_request("Command need a subcommand.");
-    }
-    let command = json!(command.unwrap());
-    let command = serde_json::from_value::<LightCommand>(command);
-    if command.is_err() {
-      return Self::bad_request("Unknown subcommand.");
-    }
-    let command = command.unwrap();
+    guard!(let Some(command) = segments.next() else { return Self::bad_request("Command need a subcommand.") });
+    let command = serde_json::from_value::<LightCommand>(json!(command));
+    guard!(let Ok(command) = command else { return Self::bad_request("Unknown subcommand.") });
     let payload = Self::transform_query(url);
     queue.send(Request::LightCommand(command, payload)).unwrap();
     Self::accepted("Success".to_string())
