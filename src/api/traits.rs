@@ -5,6 +5,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::api::topic::Topic;
 use crate::convert::RestApiPayload;
 use crate::convert::StateToMqtt;
+use crate::convert::Val;
 use crate::devices::{Device, Light, Remote, Sensor};
 use crate::Result;
 
@@ -79,8 +80,8 @@ pub trait EffectiveLightCollection {
 }
 
 impl<T: DeviceCollection> EffectiveLight for T {
-  fn turn_on(&mut self) -> Vec<(Topic, StateToMqtt)> {
-    self.flatten_lights_mut().into_iter().flat_map(|l| l.turn_on()).collect()
+  fn turn_on(&mut self, brightness: Option<Val>) -> Vec<(Topic, StateToMqtt)> {
+    self.flatten_lights_mut().into_iter().flat_map(|l| l.turn_on(brightness)).collect()
   }
 
   fn turn_off(&mut self) -> Vec<(Topic, StateToMqtt)> {
@@ -126,7 +127,7 @@ pub trait ReadWriteHome {
 }
 
 pub trait EffectiveLight: Debug {
-  fn turn_on(&mut self) -> Vec<(Topic, StateToMqtt)>;
+  fn turn_on(&mut self, brightness: Option<Val>) -> Vec<(Topic, StateToMqtt)>;
   fn turn_off(&mut self) -> Vec<(Topic, StateToMqtt)>;
   fn toggle(&mut self) -> Vec<(Topic, StateToMqtt)>;
   fn dim_down(&mut self) -> Vec<(Topic, StateToMqtt)>;

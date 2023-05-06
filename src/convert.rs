@@ -91,6 +91,10 @@ impl Val {
     Self { inner: Scalar::from(val) }
   }
 
+  pub fn from_scalar(val: Scalar) -> Self {
+    Self { inner: val }
+  }
+
   pub fn to_hsv(&self) -> f32 {
     self.inner.inner() as f32
   }

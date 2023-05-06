@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::topic::{DeviceKind, Topic, TopicMode};
 use crate::api::traits::{Addressable, DeviceCollection, EffectiveLight, EffectiveLightCollection};
-use crate::convert::{HsvColor, RestApiPayload, StateFromMqtt, StateToMqtt};
+use crate::convert::{HsvColor, RestApiPayload, StateFromMqtt, StateToMqtt, Val};
 
 use super::{Capability, Device, DeviceModel, DeviceTrait};
 
@@ -48,14 +48,14 @@ impl DeviceTrait for Light {
 }
 
 impl EffectiveLight for Light {
-  fn turn_on(&mut self) -> Vec<(Topic, StateToMqtt)> {
+  fn turn_on(&mut self, brightness: Option<Val>) -> Vec<(Topic, StateToMqtt)> {
     if self.state.on {
       return vec![];
     }
     self.state.on = true;
     vec![(
       self.topic(TopicMode::Set),
-      StateToMqtt::empty().with_state(Some(self.state.on)).with_transition(),
+      StateToMqtt::empty().with_state(Some(self.state.on)).with_value(brightness).with_transition(),
     )]
   }
 
@@ -74,7 +74,7 @@ impl EffectiveLight for Light {
     if self.state.on {
       self.turn_off()
     } else {
-      self.turn_on()
+      self.turn_on(None)
     }
   }
 
