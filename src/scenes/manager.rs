@@ -3,7 +3,7 @@ use std::rc::Rc;
 use chrono::{Duration, Local, NaiveTime};
 use futures::future::join_all;
 use guard::guard;
-use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use tokio::sync::{
   mpsc::{UnboundedReceiver, UnboundedSender},
   Mutex,
@@ -16,10 +16,9 @@ use crate::{
   },
   convert::RestApiPayload,
   home::Home,
+  scenes::scene::*,
   Result,
 };
-
-use serde_json::Value as JsonValue;
 
 #[derive(Debug)]
 pub struct SceneManager {
@@ -118,45 +117,4 @@ impl<'a> SceneEvaluator<'a> {
     assert_ne!(command, LightCommand::ChangeState);
     vec![Request::LightCommand(command, payload)]
   }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Scene {
-  pub name: String,
-  pub trigger: Trigger,
-  pub effect: Effect,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Trigger {
-  DeviceState(DeviceStateTrigger),
-  And(Box<Trigger>, Box<Trigger>),
-  Time(TimeTrigger),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeviceStateTrigger {
-  pub target: Topic,
-  pub field: String,
-  pub op: Comparison,
-}
-
-#[serde_with::serde_as]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct TimeTrigger {
-  pub from: NaiveTime,
-  #[serde_as(as = "serde_with::DurationSeconds<i64>")]
-  pub duration: Duration,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Comparison {
-  Equality { value: String },
-  BoolComparison { pivot: bool },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Effect {
-  pub target: Topic,
-  pub command: LightCommand,
 }

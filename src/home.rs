@@ -13,7 +13,7 @@ use crate::{
   },
   convert::StateToMqtt,
   devices::{Device, DeviceTrait},
-  scene::Scene,
+  scenes::scene::Scene,
   Result,
 };
 

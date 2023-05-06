@@ -9,7 +9,7 @@ use crate::api::{
   traits::ReadWriteHome,
 };
 use crate::home::Home;
-use crate::scene::SceneManager;
+use crate::scenes::manager::SceneManager;
 use crate::web_server::WebServer;
 use serde_json::Value as JsonValue;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
