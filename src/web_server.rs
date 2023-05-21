@@ -91,6 +91,10 @@ impl WebServer {
         let payload = Self::transform_query(url);
         Request::Query(Query::DeviceState(payload.topic.unwrap()), sender)
       }
+      Some("DeviceHistory") => {
+        let payload = Self::transform_query(url);
+        Request::Query(Query::DeviceHistory(payload.topic.unwrap()), sender)
+      }
       None => return Self::bad_request("Queries need a subcommand."),
       Some(_) => return Self::bad_request("Unknown subcommand."),
     };

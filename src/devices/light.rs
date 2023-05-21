@@ -45,6 +45,10 @@ impl DeviceTrait for Light {
   fn query_update(&self) -> StateToMqtt {
     StateToMqtt::empty().with_state(None)
   }
+
+  fn query_history(&self) -> Vec<StateToMqtt> {
+    vec![self.query_state()]
+  }
 }
 
 impl EffectiveLight for Light {

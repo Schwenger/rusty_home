@@ -23,6 +23,7 @@ pub trait DeviceTrait: Addressable {
   fn update_state(&mut self, state: StateFromMqtt);
   fn query_state(&self) -> StateToMqtt; // todo: rest payload
   fn query_update(&self) -> StateToMqtt;
+  fn query_history(&self) -> Vec<StateToMqtt>;
   fn physical_kind(&self) -> DeviceKind {
     self.model().kind()
   }
@@ -144,6 +145,10 @@ impl DeviceTrait for Device {
 
   fn query_update(&self) -> StateToMqtt {
     self.inner().query_update()
+  }
+
+  fn query_history(&self) -> Vec<StateToMqtt> {
+    self.inner().query_history()
   }
 }
 

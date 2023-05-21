@@ -1,3 +1,6 @@
+use std::collections::VecDeque;
+
+use chrono::{DateTime, Local, TimeZone};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -15,7 +18,7 @@ pub struct Sensor {
   icon: String,
   room: String,
   #[serde(skip)]
-  state: SensorState,
+  state: VecDeque<SensorState>,
 }
 
 impl DeviceTrait for Sensor {
@@ -36,20 +39,34 @@ impl DeviceTrait for Sensor {
   }
 
   fn update_state(&mut self, state: StateFromMqtt) {
-    self.state.with_mqtt_state(self.model(), state);
+    let mut new = self.state.front().cloned().unwrap_or_default();
+    new.with_mqtt_state(self.model(), state);
+    self.state.push_back(new);
+    if self.state.len() > 100 {
+      self.state.pop_front();
+    }
   }
 
   fn query_state(&self) -> StateToMqtt {
-    self.state.to_mqtt_state(self.model)
+    if let Some(state) = self.state.back() {
+      state.to_mqtt_state(self.model)
+    } else {
+      SensorState::default().to_mqtt_state(self.model)
+    }
   }
 
   fn query_update(&self) -> StateToMqtt {
     StateToMqtt::empty().with_battery_query()
   }
+
+  fn query_history(&self) -> Vec<StateToMqtt> {
+    self.state.iter().map(|s| s.to_mqtt_state(self.model)).collect()
+  }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub struct SensorState {
+  time: DateTime<Local>,
   active: bool,
   humidity: f64,
   temp: f64,
@@ -70,6 +87,7 @@ impl SensorState {
     if model.capable_of(Capability::Occupancy) {
       self.occupancy = state.occupancy.unwrap();
     }
+    self.time = Local::now();
   }
 
   pub fn to_mqtt_state(&self, model: DeviceModel) -> StateToMqtt {
@@ -86,22 +104,28 @@ impl SensorState {
     if model.capable_of(Capability::Occupancy) {
       res = res.with_occupancy(self.occupancy);
     }
+    res = res.with_time(self.time);
     res
   }
 }
 
 impl Default for SensorState {
   fn default() -> Self {
-    Self { active: false, humidity: 0.0, temp: 0.0, occupancy: false }
+    Self { time: Local::now(), active: false, humidity: 0.0, temp: 0.0, occupancy: false }
   }
 }
 
 impl From<Value> for SensorState {
   fn from(value: Value) -> Self {
+    let time = value
+      .get("time")
+      .and_then(Value::as_i64)
+      .and_then(|v| Local.timestamp_millis_opt(v).earliest())
+      .unwrap_or(Local::now());
     let active = value.get("state").map(|v| v == "ON").unwrap_or(false);
     let humidity = value.get("humid").and_then(Value::as_f64).unwrap_or(0.0);
     let temp = value.get("temperature").and_then(Value::as_f64).unwrap_or(0.0);
     let occupancy = value.get("occupancy").and_then(Value::as_bool).unwrap_or(false);
-    SensorState { active, humidity, temp, occupancy }
+    SensorState { time, active, humidity, temp, occupancy }
   }
 }

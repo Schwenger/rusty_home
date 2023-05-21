@@ -89,4 +89,8 @@ impl QueryableHome for Home {
   fn query_device(&self, topic: Topic) -> StateToMqtt {
     self.find_device(&topic).unwrap().query_state()
   }
+
+  fn query_history(&self, topic: Topic) -> Vec<StateToMqtt> {
+    self.find_device(&topic).unwrap().query_history()
+  }
 }

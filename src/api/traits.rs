@@ -16,6 +16,7 @@ use super::topic::TopicMode;
 pub trait QueryableHome {
   fn query_architecture(&self) -> JsonPayload;
   fn query_device(&self, topic: Topic) -> StateToMqtt;
+  fn query_history(&self, topic: Topic) -> Vec<StateToMqtt>;
 }
 
 pub trait DeviceCollection: Debug {

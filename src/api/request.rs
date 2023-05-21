@@ -23,6 +23,7 @@ pub enum Request {
 pub enum Query {
   Architecture,
   DeviceState(Topic),
+  DeviceHistory(Topic),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

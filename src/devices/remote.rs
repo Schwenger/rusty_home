@@ -94,6 +94,10 @@ impl DeviceTrait for Remote {
   fn query_update(&self) -> StateToMqtt {
     StateToMqtt::empty().with_battery_query() // Makes no sense, but it has to query _something_.
   }
+
+  fn query_history(&self) -> Vec<StateToMqtt> {
+    vec![]
+  }
 }
 
 impl Remote {

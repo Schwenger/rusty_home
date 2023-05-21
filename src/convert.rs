@@ -1,3 +1,4 @@
+use chrono::{DateTime, TimeZone};
 use guard::guard;
 use palette::{FromColor, Hsv, IntoColor};
 use serde::{Deserialize, Serialize};
@@ -221,6 +222,7 @@ pub struct StateToMqtt {
   temperature: Option<f64>,
   humidity: Option<f64>,
   occupancy: Option<bool>,
+  time: Option<i64>,
 }
 
 impl StateToMqtt {
@@ -287,6 +289,10 @@ impl StateToMqtt {
       obj.as_object_mut().unwrap().insert(String::from("occupancy"), json!(v));
     }
 
+    if let Some(t) = self.time {
+      obj.as_object_mut().unwrap().insert(String::from("time"), json!(t));
+    }
+
     obj
   }
 
@@ -348,6 +354,11 @@ impl StateToMqtt {
 
   pub fn with_occupancy(mut self, o: bool) -> Self {
     self.occupancy = Some(o);
+    self
+  }
+
+  pub fn with_time<T: TimeZone>(mut self, time: DateTime<T>) -> Self {
+    self.time = Some(time.timestamp());
     self
   }
 }
