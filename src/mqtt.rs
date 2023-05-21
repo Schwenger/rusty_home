@@ -10,7 +10,7 @@ use crate::{
   },
   convert::StateToMqtt,
   devices::{
-    remote::{IkeaDimmer, IkeaMulti, RemoteButton},
+    remote::{HueButton, IkeaDimmer, IkeaMulti, RemoteButton},
     Device,
   },
   Result,
@@ -92,6 +92,9 @@ impl MqttClient {
         self.queue.send(Request::RemoteAction(ra)).unwrap();
       } else if let Ok(multi) = serde_json::from_value::<IkeaMulti>(action.clone()) {
         let ra = RemoteAction { button: RemoteButton::IkeaMulti(multi), target };
+        self.queue.send(Request::RemoteAction(ra)).unwrap();
+      } else if let Ok(multi) = serde_json::from_value::<HueButton>(action.clone()) {
+        let ra = RemoteAction { button: RemoteButton::HueButton(multi), target };
         self.queue.send(Request::RemoteAction(ra)).unwrap();
       }
     } else if target.device().is_some() {

@@ -173,6 +173,7 @@ pub enum DeviceModel {
   IkeaMultiButton,
   IkeaDimmer,
   IkeaMotion,
+  HueButton,
 }
 
 impl DeviceModel {
@@ -185,6 +186,7 @@ impl DeviceModel {
       DeviceModel::IkeaMultiButton => DeviceKind::Remote,
       DeviceModel::IkeaDimmer => DeviceKind::Remote,
       DeviceModel::IkeaMotion => DeviceKind::Sensor,
+      DeviceModel::HueButton => DeviceKind::Remote,
     }
   }
 
@@ -196,7 +198,7 @@ impl DeviceModel {
       | DeviceModel::IkeaMultiButton
       | DeviceModel::IkeaDimmer
       | DeviceModel::IkeaMotion => Vendor::Ikea,
-      DeviceModel::HueColor => Vendor::Philips,
+      DeviceModel::HueColor | DeviceModel::HueButton => Vendor::Philips,
     }
   }
 
@@ -209,6 +211,7 @@ impl DeviceModel {
       DeviceModel::IkeaMotion => vec![Capability::Occupancy],
       DeviceModel::IkeaMultiButton => vec![],
       DeviceModel::IkeaDimmer => vec![],
+      DeviceModel::HueButton => vec![],
     }
   }
 

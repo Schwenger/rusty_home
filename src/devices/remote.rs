@@ -12,6 +12,7 @@ use super::{DeviceModel, DeviceTrait};
 pub enum RemoteButton {
   IkeaMulti(IkeaMulti),
   IkeaDimmer(IkeaDimmer),
+  HueButton(HueButton),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Copy)]
@@ -56,6 +57,24 @@ pub enum IkeaDimmer {
   BriMoveDown,
   #[serde(rename = "brightness_stop")]
   BriMoveStop,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Copy)]
+pub enum HueButton {
+  #[serde(rename = "on")]
+  On,
+  #[serde(rename = "off")]
+  Off,
+  #[serde(rename = "skip_backward")]
+  SkipBack,
+  #[serde(rename = "skip_forward")]
+  SkipForward,
+  #[serde(rename = "press")]
+  Press,
+  #[serde(rename = "hold")]
+  Hold,
+  #[serde(rename = "release")]
+  Release,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
