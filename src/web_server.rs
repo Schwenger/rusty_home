@@ -99,9 +99,13 @@ impl WebServer {
       Some(_) => return Self::bad_request("Unknown subcommand."),
     };
     queue.send(request).expect("Error handling");
-    let resp = receiver.await.unwrap();
-    println!("Responding to query with: {}", resp.to_str());
-    Self::accepted(resp.to_str())
+    let resp = receiver.await.unwrap().to_str();
+    if resp.len() > 50 {
+      println!("Responding to query with: {}[truncated]", &resp[0..49]);
+    } else {
+      println!("Responding to query with: {}", &resp);
+    }
+    Self::accepted(resp)
   }
 
   fn bad_request(msg: &'static str) -> Response<Body> {

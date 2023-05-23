@@ -60,7 +60,6 @@ impl<'a> SceneEvaluator<'a> {
       println!("Scene {} was triggered.", scene.name);
       return self.execute_effect(&scene.effect);
     }
-    println!("Scene {} was not triggered.", scene.name);
     vec![]
   }
 
@@ -84,22 +83,15 @@ impl<'a> SceneEvaluator<'a> {
 
   fn evaluate_update_trigger(&self, dst: &DeviceStateTrigger) -> bool {
     guard!(let Some((upd_topic, state)) = self.update else { return false });
-    println!("Evaluating update trigger.");
     let DeviceStateTrigger { target, field, op } = dst;
     if target != upd_topic {
-      println!("Wrong target. {} versus {}", target.to_str(), upd_topic.to_str());
       return false;
     }
-    println!("Found proper target.");
     guard!(let Some(field) = state.get(field) else { return false });
-    println!("Found field with value {}.", field);
     let field = field;
     match op {
       Comparison::BoolComparison { pivot } => field.as_bool().map(|c| c == *pivot).unwrap_or(false),
-      Comparison::Equality { value } => {
-        println!("Comparing {value} against {}.", field);
-        &field.to_string() == value
-      }
+      Comparison::Equality { value } => &field.to_string() == value,
     }
   }
 

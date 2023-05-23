@@ -18,7 +18,7 @@ pub struct Sensor {
   icon: String,
   room: String,
   #[serde(skip)]
-  state: VecDeque<SensorState>,
+  states: VecDeque<SensorState>,
 }
 
 impl DeviceTrait for Sensor {
@@ -39,16 +39,16 @@ impl DeviceTrait for Sensor {
   }
 
   fn update_state(&mut self, state: StateFromMqtt) {
-    let mut new = self.state.front().cloned().unwrap_or_default();
+    let mut new = self.states.back().cloned().unwrap_or_default();
     new.with_mqtt_state(self.model(), state);
-    self.state.push_back(new);
-    if self.state.len() > 100 {
-      self.state.pop_front();
+    self.states.push_back(new);
+    if self.states.len() > 100 {
+      self.states.pop_front();
     }
   }
 
   fn query_state(&self) -> StateToMqtt {
-    if let Some(state) = self.state.back() {
+    if let Some(state) = self.states.back() {
       state.to_mqtt_state(self.model)
     } else {
       SensorState::default().to_mqtt_state(self.model)
@@ -60,7 +60,7 @@ impl DeviceTrait for Sensor {
   }
 
   fn query_history(&self) -> Vec<StateToMqtt> {
-    self.state.iter().map(|s| s.to_mqtt_state(self.model)).collect()
+    self.states.iter().map(|s| s.to_mqtt_state(self.model)).collect()
   }
 }
 
