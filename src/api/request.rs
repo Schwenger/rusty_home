@@ -17,6 +17,7 @@ pub enum Request {
   RemoteAction(RemoteAction),
   HomeEdit(HomeEdit),
   General(General),
+  SceneCommand(SceneCommand),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,4 +60,9 @@ pub enum HomeEdit {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum General {
   Shutdown { home_path: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SceneCommand {
+  Trigger(String),
 }

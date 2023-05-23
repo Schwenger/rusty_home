@@ -24,25 +24,31 @@ use crate::{
 pub struct SceneManager {
   home: Rc<Mutex<Home>>,
   queue: UnboundedSender<Request>,
-  receiver: UnboundedReceiver<(Topic, JsonValue)>,
+  receiver: UnboundedReceiver<SceneEvent>,
+}
+
+#[derive(Debug, Clone)]
+pub enum SceneEvent {
+  SensorUpdate(Topic, JsonValue),
+  ManualTrigger(String),
 }
 
 impl SceneManager {
   pub fn new(
     home: Rc<Mutex<Home>>,
     queue: UnboundedSender<Request>,
-    receiver: UnboundedReceiver<(Topic, JsonValue)>,
+    receiver: UnboundedReceiver<SceneEvent>,
   ) -> Self {
     Self { home, queue, receiver }
   }
 
   pub async fn run(mut self) -> Result<()> {
     loop {
-      let update = self.receiver.recv().await.unwrap();
+      let event = self.receiver.recv().await.unwrap();
       let home = self.home.lock().await;
       join_all(home.scenes.iter().map(|scene| async {
-        let se = SceneEvaluator { _home: &home, update: Some(&update) };
-        se.eval_update(scene).await.into_iter().for_each(|r| self.queue.send(r).unwrap())
+        let se = SceneEvaluator { _home: &home, event: &event };
+        se.eval_sensor_update(scene).await.into_iter().for_each(|r| self.queue.send(r).unwrap())
       }))
       .await;
     }
@@ -51,12 +57,16 @@ impl SceneManager {
 
 struct SceneEvaluator<'a> {
   _home: &'a Home, // Will be required for time-triggered state-based constraints.
-  update: Option<&'a (Topic, JsonValue)>,
+  event: &'a SceneEvent,
 }
 
 impl<'a> SceneEvaluator<'a> {
-  pub async fn eval_update(self, scene: &Scene) -> Vec<Request> {
-    if self.evaluate_trigger(&scene.trigger) {
+  pub async fn eval_sensor_update(self, scene: &Scene) -> Vec<Request> {
+    let active = match self.event {
+      SceneEvent::SensorUpdate(_, _) => self.evaluate_trigger(&scene.trigger),
+      SceneEvent::ManualTrigger(ref name) => name == &scene.name,
+    };
+    if active {
       println!("Scene {} was triggered.", scene.name);
       return self.execute_effect(&scene.effect);
     }
@@ -70,6 +80,7 @@ impl<'a> SceneEvaluator<'a> {
       Trigger::Time(TimeTrigger { from, duration }) => {
         Self::evaluate_time_trigger(*from, *duration, Local::now().time())
       }
+      Trigger::ManualOnly => false,
     }
   }
 
@@ -82,9 +93,9 @@ impl<'a> SceneEvaluator<'a> {
   }
 
   fn evaluate_update_trigger(&self, dst: &DeviceStateTrigger) -> bool {
-    guard!(let Some((upd_topic, state)) = self.update else { return false });
+    guard!(let SceneEvent::SensorUpdate(updated, state) = self.event else { return false });
     let DeviceStateTrigger { target, field, op } = dst;
-    if target != upd_topic {
+    if target != updated {
       return false;
     }
     guard!(let Some(field) = state.get(field) else { return false });

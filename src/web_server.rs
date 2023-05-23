@@ -12,7 +12,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 use url::Url;
 
-use crate::api::request::{LightCommand, Query, Request};
+use crate::api::request::{LightCommand, Query, Request, SceneCommand};
 use crate::api::topic::Topic;
 use crate::convert::{Hue, RestApiPayload, Sat, Val};
 use crate::Result;
@@ -60,10 +60,26 @@ impl WebServer {
     let response = match category {
       "query" => Self::handle_query(segments, &url, queue).await,
       "command" => Self::handle_command(segments, &url, queue).await,
+      "scene" => Self::handle_scene(segments, &url, queue).await,
       "test" => Self::accepted("Test successful.".to_string()),
       _ => todo!(),
     };
     Ok(response)
+  }
+
+  async fn handle_scene(
+    mut segments: Split<'_, char>,
+    url: &Url,
+    queue: UnboundedSender<Request>,
+  ) -> Response<Body> {
+    guard!(let Some(command) = segments.next() else { return Self::bad_request("Scene triggers need a command.") });
+    if command != "TriggerScene" {
+      return Self::bad_request("Unknown subcommand.");
+    }
+    let payload = Self::transform_query(url);
+    guard!(let Some(name) = payload.name else { return Self::bad_request("Scene triggers need a name.") });
+    queue.send(Request::SceneCommand(SceneCommand::Trigger(name))).unwrap();
+    Self::accepted("Success".to_string())
   }
 
   async fn handle_command(
@@ -128,6 +144,7 @@ impl WebServer {
     let val = map.get("value").map(|b| b.parse::<f64>().unwrap()).map(Val::from_rest);
     let hue = map.get("hue").map(|b| b.parse().unwrap()).map(Hue::from_rest);
     let sat = map.get("saturation").map(|b| b.parse().unwrap()).map(Sat::from_rest);
-    RestApiPayload { topic, val, hue, sat }
+    let name = map.get("name").map(|b| b.to_string());
+    RestApiPayload { topic, val, hue, sat, name }
   }
 }

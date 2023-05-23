@@ -1,9 +1,14 @@
 use std::rc::Rc;
 
 use futures::{stream, StreamExt};
-use tokio::sync::{mpsc::UnboundedReceiver, Mutex};
+use tokio::sync::{
+  mpsc::{UnboundedReceiver, UnboundedSender},
+  Mutex,
+};
 
-use crate::{convert::StateToMqtt, home::Home, mqtt::ProtectedClient, Result};
+use crate::{
+  convert::StateToMqtt, home::Home, mqtt::ProtectedClient, scenes::manager::SceneEvent, Result,
+};
 
 use super::{request::Request, topic::Topic};
 
@@ -16,10 +21,11 @@ pub struct Executor {
 impl Executor {
   pub fn new(
     requests: UnboundedReceiver<Request>,
+    scene_events: UnboundedSender<SceneEvent>,
     client: ProtectedClient,
     home: Rc<Mutex<Home>>,
   ) -> Self {
-    let inner = ExecutorLogic { client, home };
+    let inner = ExecutorLogic { client, home, scene_events };
     Executor { requests, inner }
   }
 
@@ -36,6 +42,7 @@ impl Executor {
 pub struct ExecutorLogic {
   pub(super) client: ProtectedClient,
   pub(super) home: Rc<Mutex<Home>>,
+  pub(super) scene_events: UnboundedSender<SceneEvent>,
 }
 
 impl ExecutorLogic {
@@ -47,6 +54,7 @@ impl ExecutorLogic {
       Request::General(general) => self.execute_general(general).await,
       Request::RemoteAction(ra) => self.remote_action(ra).await,
       Request::DeviceCommand(cmd, target) => self.execute_device(target, cmd).await,
+      Request::SceneCommand(cmd) => self.execute_scene(cmd).await,
     }
   }
 

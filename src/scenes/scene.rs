@@ -15,6 +15,7 @@ pub enum Trigger {
   DeviceState(DeviceStateTrigger),
   And(Box<Trigger>, Box<Trigger>),
   Time(TimeTrigger),
+  ManualOnly,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

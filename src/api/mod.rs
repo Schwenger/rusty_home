@@ -11,5 +11,6 @@ mod home_edit;
 mod light_command;
 mod query;
 mod remote;
+mod scene;
 
 pub use executor::Executor;

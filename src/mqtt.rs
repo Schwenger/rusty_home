@@ -13,6 +13,7 @@ use crate::{
     remote::{HueButton, IkeaDimmer, IkeaMulti, RemoteButton},
     Device,
   },
+  scenes::manager::SceneEvent,
   Result,
 };
 use paho_mqtt::{AsyncClient, AsyncReceiver, CreateOptionsBuilder, Message, QOS_1};
@@ -23,7 +24,7 @@ use tokio::sync::{mpsc::UnboundedSender, Mutex};
 pub struct MqttClient {
   client: AsyncClient,
   queue: UnboundedSender<Request>,
-  updates: UnboundedSender<(Topic, JsonValue)>,
+  scene_events: UnboundedSender<SceneEvent>,
 }
 
 #[allow(missing_debug_implementations)]
@@ -39,13 +40,13 @@ pub async fn setup_client(
   host: &str,
   port: u16,
   queue: UnboundedSender<Request>,
-  updates: UnboundedSender<(Topic, JsonValue)>,
+  events: UnboundedSender<SceneEvent>,
 ) -> Result<(ProtectedClient, MqttReceiver)> {
   let url = format!("mqtt://{host}:{port}");
   let mut client = CreateOptionsBuilder::new().client_id("Mac").server_uri(url).create_client()?;
   let stream = client.get_stream(None);
   client.connect(None).await?;
-  let mqtt_client = MqttClient { client, queue, updates };
+  let mqtt_client = MqttClient { client, queue, scene_events: events };
   let protected = Arc::new(Mutex::new(mqtt_client));
   let receiver = MqttReceiver { stream, client: protected.clone() };
   Ok((protected, receiver))
@@ -102,7 +103,7 @@ impl MqttClient {
       let parsed = serde_json::from_value(payload.clone()).unwrap();
       let req = Request::DeviceCommand(DeviceCommand::UpdateState(parsed), target.clone());
       self.queue.send(req).expect("Error handling.");
-      self.updates.send((target, payload)).expect("Error handling.");
+      self.scene_events.send(SceneEvent::SensorUpdate(target, payload)).expect("Error handling.");
     }
   }
 

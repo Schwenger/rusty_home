@@ -382,4 +382,5 @@ pub struct RestApiPayload {
   pub val: Option<Val>,
   pub hue: Option<Hue>,
   pub sat: Option<Sat>,
+  pub name: Option<String>,
 }
