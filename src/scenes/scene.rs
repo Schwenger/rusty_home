@@ -40,7 +40,7 @@ pub enum Comparison {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Effect {
-  pub target: Topic,
-  pub command: LightCommand,
+pub enum Effect {
+  LightCommand { target: Topic, command: LightCommand },
+  And(Vec<Effect>),
 }

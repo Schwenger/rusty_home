@@ -107,7 +107,13 @@ impl<'a> SceneEvaluator<'a> {
   }
 
   fn execute_effect(&self, effect: &Effect) -> Vec<Request> {
-    let Effect { ref target, command } = *effect;
+    match effect {
+      Effect::LightCommand { target, command } => self.execute_light_command(target, *command),
+      Effect::And(effects) => effects.iter().flat_map(|e| self.execute_effect(e)).collect(),
+    }
+  }
+
+  fn execute_light_command(&self, target: &Topic, command: LightCommand) -> Vec<Request> {
     let mut payload = RestApiPayload { topic: Some(target.clone()), ..RestApiPayload::default() };
     payload.topic = Some(target.clone());
     assert_ne!(command, LightCommand::ChangeState);
